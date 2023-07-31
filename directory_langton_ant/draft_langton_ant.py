@@ -18,6 +18,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import main
 import random
 import threading
+import time
 
 
 # ============================================================================
@@ -46,11 +47,11 @@ class Application(Tk):
 
     def auto(self):
         self.plot()
-        threading.Timer(0.5, self.auto).start()
+        threading.Timer(0.001, self.auto).start()
 
     def plot(self):
         self.ax.clear()  # clear axes from previous plot
-        self.update_plt()
+        self.data = self.update_plt()
         self.canvas.draw()
 
     def start_game_of_life(self):
@@ -240,8 +241,7 @@ class Application(Tk):
             self.data_update[line][element] = int(str(self.data[line][element])[-1:])
         for (line, element), value in np.ndenumerate(self.data):  # update the datas
             self.update_data(line, element, str(value))
-        self.data = self.data_update
-        for (line, element), value in np.ndenumerate(self.data):  # update the pixels of the canvas
+        for (line, element), value in np.ndenumerate(self.data_update):  # update the pixels of the canvas TOO LONG
             color_pixel(int(value), line, element)
         return self.data_update
 
