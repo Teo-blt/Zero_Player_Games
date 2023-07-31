@@ -23,20 +23,12 @@ import threading
 # ============================================================================
 
 
-def out_of_bounds(x: int, y: int, state: int, type_rotation: np.ndarray):
-    if (x + type_rotation[state - 1][0] >= 5 or x + type_rotation[state - 1][0] < 0 or y + type_rotation[state - 1][1]
-            >= 5 or y + type_rotation[state - 1][1] < 0):
-        return 1
-    else:
-        return 0
-
-
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("Langton's ant")
-        self.rules = [["white", "R"], ["black", "L"]]
-        self.size = (5, 5)
+        self.rules = [["white", "L"], ["black", "L"], ["Blue", "R"], ["Red", "R"]]
+        self.size = (20, 20)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
         self.directions = [1, 2, 3, 4]  # [North : 1, East : 2, South : 3, West : 4]
@@ -148,7 +140,7 @@ class Application(Tk):
         :param direction_facing: information about the facing direction of the ant
         [North : 1, East : 2, South : 3, West : 4]
         """
-        if out_of_bounds(x, y, direction_facing, self.matrix_rotation_right):
+        if self.out_of_bounds(x, y, direction_facing, self.matrix_rotation_right):
             pass
         else:
             self.data_update[x + self.matrix_rotation_right[direction_facing - 1][0]][
@@ -166,7 +158,7 @@ class Application(Tk):
         :param direction_facing: information about the facing direction of the ant
         [North : 1, East : 2, South : 3, West : 4]
         """
-        if out_of_bounds(x, y, direction_facing, self.matrix_rotation_left):
+        if self.out_of_bounds(x, y, direction_facing, self.matrix_rotation_left):
             pass
         else:
             self.data_update[x + self.matrix_rotation_left[direction_facing - 1][0]][
@@ -206,6 +198,15 @@ class Application(Tk):
                     ((int(state[-1:]) + 1) % len(self.rules))))
             else:  # if the cell is empty
                 self.data_update[x][y] = ((int(state[-1:]) + 1) % len(self.rules))
+
+    def out_of_bounds(self, x: int, y: int, state: int, type_rotation: np.ndarray):
+        if (x + type_rotation[state - 1][0] >= self.size[0] or x + type_rotation[state - 1][0] < 0 or y +
+                type_rotation[state - 1][
+                    1]
+                >= self.size[1] or y + type_rotation[state - 1][1] < 0):
+            return 1
+        else:
+            return 0
 
     def update_plt(self):
         """
