@@ -8,16 +8,18 @@
 """The Module Has Been Build try zero player games"""
 # =============================================================================
 # Imports
-from tkinter import *
-from tkinter import ttk
+
 import matplotlib
-import tkinter as tk
+import main
 import numpy as np
 import matplotlib.pyplot as plt
+import concurrent.futures
+from tkinter import *
+from tkinter import ttk
+from random import choice
+from threading import Timer
+from concurrent.futures.thread import ThreadPoolExecutor
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import main
-import random
-import threading
 import time
 
 
@@ -27,6 +29,7 @@ import time
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
+        self._NUM_WORKERS = 8
         self.title("Langton's ant")
         self.rules = [["white", "L"], ["black", "L"], ["Blue", "R"], ["Red", "R"]]
         self.size = (20, 20)
@@ -41,15 +44,22 @@ class Application(Tk):
         self.fig = matplotlib.figure.Figure
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
+        self.executor = concurrent.futures.thread.ThreadPoolExecutor
 
         # Create widgets
         self.start_game_of_life()
 
     def auto(self):
+        """
+        plot is a function that automatically call plot to update the simulation
+        """
         self.plot()
-        threading.Timer(0.001, self.auto).start()
+        Timer(0.001, self.auto).start()
 
     def plot(self):
+        """
+        plot is a function that update the simulation of one step
+        """
         self.ax.clear()  # clear axes from previous plot
         self.data = self.update_plt()
         self.canvas.draw()
@@ -97,7 +107,7 @@ class Application(Tk):
                 else:
                     if len(str(self.data[-y_location][x_location])) == 1:  # if the user clic on an empty cell
                         rectangle = plt.Rectangle((x_location + 0.25, y_location + 0.25), 0.5, 0.5, fc="#742B22")
-                        self.data[-y_location][x_location] = int(str(random.choice(self.directions)) + str(
+                        self.data[-y_location][x_location] = int(str(choice(self.directions)) + str(
                             (self.data[-y_location][x_location] % len(self.rules))))
                     else:
                         rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.rules[0][0])
@@ -114,7 +124,7 @@ class Application(Tk):
         self.update_plt()
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
-        tk.mainloop()
+        mainloop()
 
     """
     what do we want about update data
@@ -174,8 +184,7 @@ class Application(Tk):
 
         :param x: x position of the pixel
         :param y: y position of the pixel
-        :param state: information about the facing direction of the ant
-        [North : 1, East : 2, South : 3, West : 4]
+        :param state: information about the facing direction of the ant [North : 1, East : 2, South : 3, West : 4]
         """
         if len(state) == 1:  # Pass the empty cells
             pass
@@ -201,6 +210,16 @@ class Application(Tk):
                 self.data_update[x][y] = ((int(state[-1:]) + 1) % len(self.rules))
 
     def out_of_bounds(self, x: int, y: int, state: int, type_rotation: np.ndarray):
+        """
+        out_of_bounds is a function that calculate if the next step of the ant is out of bounds
+
+        :param x: x position of the pixel
+        :param y: y position of the pixel
+        :param state: information about the facing direction of the ant [North : 1, East : 2, South : 3, West : 4]
+        :param type_rotation: matrix of rotation
+
+        :return bool: 1 if out of bounds else 0
+        """
         if (x + type_rotation[state - 1][0] >= self.size[0] or x + type_rotation[state - 1][0] < 0 or y +
                 type_rotation[state - 1][
                     1]
@@ -241,8 +260,15 @@ class Application(Tk):
             self.data_update[line][element] = int(str(self.data[line][element])[-1:])
         for (line, element), value in np.ndenumerate(self.data):  # update the datas
             self.update_data(line, element, str(value))
+
+        with ThreadPoolExecutor(max_workers=self._NUM_WORKERS) as self.executor:
+            futures = {self.executor.submit(color_pixel, int(value), line, element) for
+                       (line, element), value in np.ndenumerate(self.data_update)}
+            concurrent.futures.wait(futures)
+        """ 
         for (line, element), value in np.ndenumerate(self.data_update):  # update the pixels of the canvas TOO LONG
             color_pixel(int(value), line, element)
+        """
         return self.data_update
 
 

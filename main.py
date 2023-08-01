@@ -5,7 +5,7 @@
 # Created Date: July 20 10:00:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
-"""The Module Has Been Build try zero player games"""
+"""The Module Has Been Build to try zero player games"""
 # =============================================================================
 # Imports
 from tkinter import *
