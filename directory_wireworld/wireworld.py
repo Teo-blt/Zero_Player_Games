@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Created By  : Bulteau Téo
-# Created Date: July 20 16:30:00 2023
+# Created Date: August 1 16:30:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
 """The Module Has Been Build try zero player games"""
@@ -38,7 +38,7 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_game_of_life()
+        self.start_wireworld()
 
     def foo(self):
         self.plot()
@@ -49,9 +49,9 @@ class Application(Tk):
         self.update_plt()
         self.canvas.draw()
 
-    def start_game_of_life(self):
+    def start_wireworld(self):
         """
-        start_game_of_life is the main script of game of life
+        start_wireworld is the main script of game of life
         """
         matplotlib.use('TkAgg')
         self.wm_title("Game of life")

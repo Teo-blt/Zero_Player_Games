@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Created By  : Bulteau Téo
-# Created Date: July 20 16:30:00 2023
+# Created Date: August 1 16:30:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
 """The Module Has Been Build try zero player games"""
@@ -51,7 +51,7 @@ class Application(Tk):
 
     def start_brian_brain(self):
         """
-        start_game_of_life is the main script of game of life
+        start_brian_brain is the main script of game of life
         """
         matplotlib.use('TkAgg')
         self.wm_title("Brian's Brain")

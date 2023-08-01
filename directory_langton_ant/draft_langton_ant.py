@@ -46,7 +46,7 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_game_of_life()
+        self.start_langton_ant()
 
     def auto(self):
         """
@@ -78,9 +78,9 @@ class Application(Tk):
         if self.show == 2:
             self.show = 0
 
-    def start_game_of_life(self):
+    def start_langton_ant(self):
         """
-        start_game_of_life is the main script of game of life
+        start_langton_ant is the main script of game of life
         """
         matplotlib.use('TkAgg')
         self.wm_title("Langton's ant")
