@@ -13,14 +13,13 @@ import matplotlib
 import main
 import numpy as np
 import matplotlib.pyplot as plt
-import concurrent.futures
 from tkinter import *
 from tkinter import ttk
 from random import choice
 from threading import Timer
-from concurrent.futures.thread import ThreadPoolExecutor
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import time
+from matplotlib.figure import Figure
 
 
 # ============================================================================
@@ -28,10 +27,11 @@ import time
 
 class Application(Tk):
     def __init__(self):
-        Tk.__init__(self)  # Initialisation of the first window
-        self._NUM_WORKERS = 8
+        super().__init__()
         self.title("Langton's ant")
         self.rules = [["white", "L"], ["black", "L"], ["Blue", "R"], ["Red", "R"]]
+        self.step = 0
+        self.show = 1
         self.size = (20, 20)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
@@ -40,11 +40,10 @@ class Application(Tk):
         self.matrix_rotation_left = np.array([[0, -1], [-1, 0], [0, 1], [1, 0]])  # turn to left
         self.data = np.full(self.size, 0, dtype=int)
         self.data_update = np.full(self.size, 0, dtype=int)
-        self.thread_running = bool
+        self.step_entry = ttk.Entry()
         self.fig = matplotlib.figure.Figure
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
-        self.executor = concurrent.futures.thread.ThreadPoolExecutor
 
         # Create widgets
         self.start_game_of_life()
@@ -53,16 +52,31 @@ class Application(Tk):
         """
         plot is a function that automatically call plot to update the simulation
         """
+        start_time = time.time()
         self.plot()
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Function execution time: {execution_time:.6f} seconds")
         Timer(0.001, self.auto).start()
 
     def plot(self):
         """
         plot is a function that update the simulation of one step
         """
+        self.upload_entry()
         self.ax.clear()  # clear axes from previous plot
         self.data = self.update_plt()
         self.canvas.draw()
+
+    def upload_entry(self):
+        self.step -= -1
+        self.step_entry.delete(0, 2000)
+        self.step_entry.insert(0, "Step : " + str(self.step))
+
+    def switch(self):
+        self.show += 1
+        if self.show == 2:
+            self.show = 0
 
     def start_game_of_life(self):
         """
@@ -85,6 +99,11 @@ class Application(Tk):
         auto_button = ttk.Button(menu_frame, text="Auto", cursor="right_ptr",
                                  command=lambda: [self.auto()])
         auto_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        show_button = ttk.Button(menu_frame, text="Faster", cursor="right_ptr",
+                                 command=lambda: [self.switch()])
+        show_button.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
+        self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
+        self.step_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event):
             """
@@ -258,19 +277,26 @@ class Application(Tk):
         for (line, element), value in np.ndenumerate(self.data_update):  # first create the floor canvas
             # Iterate over the elements and their indices using np.ndenumerate
             self.data_update[line][element] = int(str(self.data[line][element])[-1:])
+
         for (line, element), value in np.ndenumerate(self.data):  # update the datas
             self.update_data(line, element, str(value))
 
-        with ThreadPoolExecutor(max_workers=self._NUM_WORKERS) as self.executor:
-            futures = {self.executor.submit(color_pixel, int(value), line, element) for
-                       (line, element), value in np.ndenumerate(self.data_update)}
-            concurrent.futures.wait(futures)
-        """ 
-        for (line, element), value in np.ndenumerate(self.data_update):  # update the pixels of the canvas TOO LONG
-            color_pixel(int(value), line, element)
-        """
+        if self.show:
+            for (line, element), value in np.ndenumerate(self.data_update):  # update the pixels of the canvas TOO LONG
+                color_pixel(int(value), line, element)
+
         return self.data_update
 
+
+"""
+def auto():
+    start_time = time.time()
+    function_test()
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Function execution time: {execution_time:.6f} seconds")
+    threading.Timer(0.5, auto).start()
+"""
 
 if __name__ == "__main__":
     # execute only if run as a script

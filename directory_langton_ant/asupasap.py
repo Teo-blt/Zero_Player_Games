@@ -1,32 +1,43 @@
-import random
-import threading
-import time
+import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
-directions = [0, 1]
-def random_direction():
-    # {1: "N", 2: "E", 3: "S", 4: "W"}
-    return random.choice(directions)
+class GridOfPixels:
+    def __init__(self, canvas_size=(5, 5), rules=None):
+        self.canvas_size = canvas_size
+        self.rules = rules if rules else {0: ("white",), 1: ("red",), 2: ("blue",)}
 
+    def draw_pixel(self, canvas, state, x, y):
+        color = self.rules.get(int(str(state)[-1:]), ("white",))[0]
 
-value = (random_direction())
-print(value)
-print("I add 1")
-print(directions[((value + 1) % 2)])
+        fig = Figure(figsize=(1, 1), facecolor=color)
+        pixel_canvas = FigureCanvasTkAgg(fig, master=canvas)
+        pixel_canvas.draw()
 
+        pixel_canvas.get_tk_widget().grid(row=x, column=y)
 
-def function_test():
-    p = 0
-    for i in range(0, 100):
-        p += i
-    return p
+def main():
+    # Define the grid size
+    rows, cols = 5, 5
 
+    # Create the main application window
+    root = tk.Tk()
+    root.title("Grid of Pixels")
 
-def auto():
-    start_time = time.time()
-    function_test()
-    end_time = time.time()
-    execution_time = end_time - start_time
-    print(f"Function execution time: {execution_time:.6f} seconds")
-    threading.Timer(0.5, auto).start()
+    # Create the canvas to draw the grid of pixels
+    canvas = tk.Canvas(root)
+    canvas.pack()
 
-auto()
+    # Create an instance of GridOfPixels
+    grid_of_pixels = GridOfPixels(canvas_size=(rows, cols))
+
+    # Example: Drawing pixels in different positions with different states
+    grid_of_pixels.draw_pixel(canvas, 1, 0, 0)  # State 1 (Red) at position (0, 0)
+    grid_of_pixels.draw_pixel(canvas, 2, 1, 1)  # State 2 (Blue) at position (1, 1)
+    grid_of_pixels.draw_pixel(canvas, 11, 2, 2)  # State 1 (Red) at position (2, 2) with an ant (brown)
+
+    # Run the main Tkinter event loop
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
