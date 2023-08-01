@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Created By  : Bulteau Téo
-# Created Date: August 1 15:47:00 2023
+# Created Date: July 20 16:30:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
-"""The Module Has Been Build to try zero player games"""
+"""The Module Has Been Build try zero player games"""
 # =============================================================================
 # Imports
 from tkinter import *
@@ -21,11 +21,12 @@ import threading
 
 # ============================================================================
 
+
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
-        self.title("Brian's Brain")
-        self.color = {0: "white", 1: "black", 2: "red"}
+        self.title("Game of life")
+        self.color = {0: "white", 1: "black"}
         self.size = (20, 20)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
@@ -37,23 +38,23 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_brian_brain()
+        self.start_game_of_life()
 
     def foo(self):
         self.plot()
-        threading.Timer(0.25, self.foo).start()
+        threading.Timer(0.5, self.foo).start()
 
     def plot(self):
         self.ax.clear()  # clear axes from previous plot
         self.update_plt()
         self.canvas.draw()
 
-    def start_brian_brain(self):
+    def start_game_of_life(self):
         """
         start_game_of_life is the main script of game of life
         """
         matplotlib.use('TkAgg')
-        self.wm_title("Brian's Brain")
+        self.wm_title("Game of life")
         self.geometry("800x600")
         self.fig = plt.Figure(figsize=(6, 6))
         self.canvas = FigureCanvasTkAgg(self.fig, self)
@@ -122,14 +123,31 @@ class Application(Tk):
                 elif i == 0 and j == 0:
                     pass
                 else:
-                    if self.data[x + i, y + j]:
-                        nb_neighbor += 1
-        if self.data[x, y] == 2:
-            self.data_update[x, y] = 0
-        if self.data[x, y] == 1:
-            self.data_update[x, y] = 2
-        if self.data[x, y] == 0 and nb_neighbor == 2:
-            self.data_update[x, y] = 1
+                    nb_neighbor += self.data[x + i, y + j]
+        match nb_neighbor:
+            case 0:
+                self.data_update[x, y] = 0
+            case 1:
+                self.data_update[x, y] = 0
+            case 2:
+                if self.data[x, y]:
+                    self.data_update[x, y] = 1
+                else:
+                    self.data_update[x, y] = 0
+            case 3:
+                self.data_update[x, y] = 1
+            case 4:
+                self.data_update[x, y] = 0
+            case 5:
+                self.data_update[x, y] = 0
+            case 6:
+                self.data_update[x, y] = 0
+            case 7:
+                self.data_update[x, y] = 0
+            case 8:
+                self.data_update[x, y] = 0
+            case _:
+                print('Error, number neighbor', nb_neighbor)
 
     def update_plt(self):
         """
@@ -143,7 +161,7 @@ class Application(Tk):
             """
             color_pixel update the canvas and the data
 
-            :param state: the value of the pixel (2 dying, 1 on, 0 off)
+            :param state: the value of the pixel (1 on, 0 off)
             :param x: x coordinate of the pixel
             :param y: y coordinate of the pixel
             :return: self.data_update the updated datas
@@ -157,7 +175,6 @@ class Application(Tk):
         self.data = self.data_update
         for (line, element), value in np.ndenumerate(self.data):
             color_pixel(value, line, element)
-
 
 if __name__ == "__main__":
     # execute only if run as a script

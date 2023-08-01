@@ -25,7 +25,7 @@ import threading
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
-        self.title("Game of life")
+        self.title("Brian's Brain")
         self.color = {0: "white", 1: "black", 2: "red"}
         self.size = (20, 20)
         self.pixel_start = (75, 72)
@@ -38,7 +38,7 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_game_of_life()
+        self.start_brian_brain()
 
     def foo(self):
         self.plot()
@@ -49,12 +49,12 @@ class Application(Tk):
         self.update_plt()
         self.canvas.draw()
 
-    def start_game_of_life(self):
+    def start_brian_brain(self):
         """
         start_game_of_life is the main script of game of life
         """
         matplotlib.use('TkAgg')
-        self.wm_title("Game of life")
+        self.wm_title("Brian's Brain")
         self.geometry("800x600")
         self.fig = plt.Figure(figsize=(6, 6))
         self.canvas = FigureCanvasTkAgg(self.fig, self)
