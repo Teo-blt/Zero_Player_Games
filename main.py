@@ -13,6 +13,7 @@ from tkinter import ttk
 from tkinter.messagebox import *
 import directory_game_of_life.game_of_life
 import directory_langton_ant.langton_ant
+import directory_brian_brain.brian_brain
 
 
 # ============================================================================
@@ -49,6 +50,8 @@ class Application(Tk):
                     directory_game_of_life.game_of_life.Application().mainloop()
                 case "Langton's ant":
                     directory_langton_ant.langton_ant.Application().mainloop()
+                case "Brian's brain":
+                    directory_brian_brain.brian_brain.Application().mainloop()
                 case _:
                     showerror("Error", "Game unknown")
 

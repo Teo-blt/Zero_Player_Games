@@ -26,7 +26,7 @@ class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("Game of life")
-        self.color = {0: "white", 1: "black"}
+        self.color = {0: "white", 1: "black", 2: "red"}
         self.size = (20, 20)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
@@ -42,7 +42,7 @@ class Application(Tk):
 
     def foo(self):
         self.plot()
-        threading.Timer(0.5, self.foo).start()
+        threading.Timer(0.25, self.foo).start()
 
     def plot(self):
         self.ax.clear()  # clear axes from previous plot
@@ -123,31 +123,14 @@ class Application(Tk):
                 elif i == 0 and j == 0:
                     pass
                 else:
-                    nb_neighbor += self.data[x + i, y + j]
-        match nb_neighbor:
-            case 0:
-                self.data_update[x, y] = 0
-            case 1:
-                self.data_update[x, y] = 0
-            case 2:
-                if self.data[x, y]:
-                    self.data_update[x, y] = 1
-                else:
-                    self.data_update[x, y] = 0
-            case 3:
-                self.data_update[x, y] = 1
-            case 4:
-                self.data_update[x, y] = 0
-            case 5:
-                self.data_update[x, y] = 0
-            case 6:
-                self.data_update[x, y] = 0
-            case 7:
-                self.data_update[x, y] = 0
-            case 8:
-                self.data_update[x, y] = 0
-            case _:
-                print('Error, number neighbor', nb_neighbor)
+                    if self.data[x + i, y + j]:
+                        nb_neighbor += 1
+        if self.data[x, y] == 2:
+            self.data_update[x, y] = 0
+        if self.data[x, y] == 1:
+            self.data_update[x, y] = 2
+        if self.data[x, y] == 0 and nb_neighbor == 2:
+            self.data_update[x, y] = 1
 
     def update_plt(self):
         """
@@ -161,7 +144,7 @@ class Application(Tk):
             """
             color_pixel update the canvas and the data
 
-            :param state: the value of the pixel (1 on, 0 off)
+            :param state: the value of the pixel (2 dying, 1 on, 0 off)
             :param x: x coordinate of the pixel
             :param y: y coordinate of the pixel
             :return: self.data_update the updated datas
