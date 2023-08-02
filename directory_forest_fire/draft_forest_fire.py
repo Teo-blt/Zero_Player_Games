@@ -27,10 +27,10 @@ class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("Forest Fire")
-        self.color = {0: "black", 1: "green", 2: "red"}
+        self.color = {0: "black", 1: "green", 2: "orange"}
         self.probability_spontaneous_ignition = 0.001
         self.probability_ignition = 0.9
-        self.probability_spawn = 0.009
+        self.probability_spawn = 0.05
         self.size = (20, 20)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)

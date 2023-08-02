@@ -58,6 +58,8 @@ class Application(Tk):
                     directory_wireworld.wireworld.Application().mainloop()
                 case "Forest fire":
                     directory_forest_fire.forest_fire.Application().mainloop()
+                case "Highlife":
+                    pass
                 case _:
                     showerror("Error", "Game unknown")
 

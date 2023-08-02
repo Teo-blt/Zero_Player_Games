@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Created By  : Bulteau Téo
-# Created Date: August 2 11:30:00 2023
+# Created Date: August 2 14:40:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
 """The Module Has Been Build try zero player games"""
@@ -15,7 +15,6 @@ import tkinter as tk
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from random import random
 import main
 import threading
 
@@ -26,14 +25,12 @@ import threading
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
-        self.title("Forest Fire")
-        self.color = {0: "black", 1: "green", 2: "red"}
-        self.probability_spontaneous_ignition = 0.001
-        self.probability_ignition = 0.9
-        self.probability_spawn = 0.05
+        self.title("Highlife")
+        self.color = {0: "white", 1: "black"}
         self.size = (20, 20)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
+        self.past_value = (2000, 2000)
         self.data = np.zeros(self.size)
         self.data_update = np.zeros(self.size)
         self.fig = matplotlib.figure.Figure
@@ -41,7 +38,7 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_forest_fire()
+        self.start_highlife()
 
     def foo(self):
         self.plot()
@@ -52,12 +49,12 @@ class Application(Tk):
         self.update_plt()
         self.canvas.draw()
 
-    def start_forest_fire(self):
+    def start_highlife(self):
         """
-        start_forest_fire is the main script of Forest fire
+        start_highlife is the main script of highlife
         """
         matplotlib.use('TkAgg')
-        self.wm_title("Forest Fire")
+        self.wm_title("Highlife")
         self.geometry("800x600")
         self.fig = plt.Figure(figsize=(6, 6))
         self.canvas = FigureCanvasTkAgg(self.fig, self)
@@ -94,21 +91,23 @@ class Application(Tk):
                         int(x_location) < 0 or int(y_location) <= -self.size[1]:
                     pass
                 else:
-                    if movement == 1 and self.past_value == (x_location, y_location):
+                    if movement and self.past_value == (x_location, y_location):
                         pass
                     else:
                         self.past_value = (x_location, y_location)
-                        rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.color[
-                            (self.data[-y_location][x_location] + 1) % len(self.color)])
-                        self.data[-y_location][x_location] = (self.data[-y_location][x_location] + 1) % len(self.color)
-                        self.ax.add_patch(rectangle)
+                        if int(self.data[-y_location][x_location]):
+                            rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.color[0])
+                            self.data[-y_location][x_location] = 0
+                        else:
+                            rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.color[1])
+                            self.data[-y_location][x_location] = 1
                         self.ax.add_patch(rectangle)
                         self.canvas.draw()
 
-        def link_to_f_not_motion(event):
+        def link_to_f_not_motion(event: Event):
             f(event, 0)
 
-        def link_to_f_motion(event):
+        def link_to_f_motion(event: Event):
             f(event, 1)
 
         self.bind("<Button-1>", link_to_f_not_motion)
@@ -136,26 +135,31 @@ class Application(Tk):
                 elif i == 0 and j == 0:
                     pass
                 else:
-                    if self.data[x + i, y + j] == 2:
-                        nb_neighbor += 1
-        # (2 burning, 1 three, 0 empty)
-        match self.data[x, y]:
-            case 2:
+                    nb_neighbor += self.data[x + i, y + j]
+        match nb_neighbor:
+            case 0:
                 self.data_update[x, y] = 0
             case 1:
-                if nb_neighbor and random() <= self.probability_ignition:
-                    self.data_update[x, y] = 2
-                elif random() <= self.probability_spontaneous_ignition:
-                    self.data_update[x, y] = 2
-                else:
-                    self.data_update[x, y] = 1
-            case 0:
-                if random() <= self.probability_spawn:
+                self.data_update[x, y] = 0
+            case 2:
+                if self.data[x, y]:
                     self.data_update[x, y] = 1
                 else:
                     self.data_update[x, y] = 0
+            case 3:
+                self.data_update[x, y] = 1
+            case 4:
+                self.data_update[x, y] = 0
+            case 5:
+                self.data_update[x, y] = 0
+            case 6:
+                self.data_update[x, y] = 0
+            case 7:
+                self.data_update[x, y] = 0
+            case 8:
+                self.data_update[x, y] = 0
             case _:
-                print("Error", self.data[x, y])
+                print('Error, number neighbor', nb_neighbor)
 
     def update_plt(self):
         """
@@ -165,11 +169,11 @@ class Application(Tk):
         self.ax.autoscale(enable=True, axis="x", tight=True)
         self.ax.autoscale(enable=True, axis="y", tight=True)
 
-        def color_pixel(state, x, y):
+        def color_pixel(state, x: int, y: int):
             """
             color_pixel update the canvas and the data
 
-            :param state: the value of the pixel (2 burning, 1 three, 0 empty)
+            :param state: the value of the pixel (1 on, 0 off)
             :param x: x coordinate of the pixel
             :param y: y coordinate of the pixel
             :return: self.data_update the updated datas
