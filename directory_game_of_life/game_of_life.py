@@ -71,7 +71,13 @@ class Application(Tk):
                                  command=lambda: [self.foo()])
         auto_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
 
-        def f(event, movement):
+        def f(event: Event, movement: int):
+            """
+            f is a function that allow the user to create ants on the canvas with a clik
+
+            :param event: information about the clic of the user (position and more)
+            :param movement: information about the movement of the mouse
+            """
             if event.x <= self.pixel_start[0] or event.y <= self.pixel_start[1] or \
                     event.x >= self.pixel_end[0] or event.y >= self.pixel_end[1]:
                 pass
@@ -98,10 +104,10 @@ class Application(Tk):
                         self.ax.add_patch(rectangle)
                         self.canvas.draw()
 
-        def link_to_f_not_motion(event):
+        def link_to_f_not_motion(event: Event):
             f(event, 0)
 
-        def link_to_f_motion(event):
+        def link_to_f_motion(event: Event):
             f(event, 1)
 
         self.bind("<Button-1>", link_to_f_not_motion)
@@ -114,7 +120,13 @@ class Application(Tk):
         self.tk.call("set_theme", "light")
         tk.mainloop()
 
-    def update_data(self, x, y):
+    def update_data(self, x: int, y: int):
+        """
+        update_data is a function that update the data to one step
+
+        :param x: x position of the pixel
+        :param y: y position of the pixel
+        """
         nb_neighbor = 0
         for i in [-1, 0, 1]:
             for j in [-1, 0, 1]:
@@ -157,7 +169,7 @@ class Application(Tk):
         self.ax.autoscale(enable=True, axis="x", tight=True)
         self.ax.autoscale(enable=True, axis="y", tight=True)
 
-        def color_pixel(state, x, y):
+        def color_pixel(state, x: int, y: int):
             """
             color_pixel update the canvas and the data
 

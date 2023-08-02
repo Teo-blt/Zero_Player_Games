@@ -32,7 +32,7 @@ class Application(Tk):
         self.rules = [["white", "L"], ["black", "L"], ["Blue", "R"], ["Red", "R"]]
         self.step = 0
         self.show = 1
-        self.size = (20, 20)
+        self.size = (10, 10)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
         self.directions = [1, 2, 3, 4]  # [North : 1, East : 2, South : 3, West : 4]
@@ -52,11 +52,7 @@ class Application(Tk):
         """
         plot is a function that automatically call plot to update the simulation
         """
-        start_time = time.time()
         self.plot()
-        end_time = time.time()
-        execution_time = end_time - start_time
-        print(f"Function execution time: {execution_time:.6f} seconds")
         Timer(0.001, self.auto).start()
 
     def plot(self):
