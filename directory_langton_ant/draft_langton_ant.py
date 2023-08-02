@@ -76,7 +76,7 @@ class Application(Tk):
 
     def start_langton_ant(self):
         """
-        start_langton_ant is the main script of game of life
+        start_langton_ant is the main script of Langton's ant
         """
         matplotlib.use('TkAgg')
         self.wm_title("Langton's ant")

@@ -50,7 +50,7 @@ class Application(Tk):
 
     def start_wireworld(self):
         """
-        start_wireworld is the main script of game of life
+        start_wireworld is the main script of Wireworld
         """
         matplotlib.use('TkAgg')
         self.wm_title("Wireworld")

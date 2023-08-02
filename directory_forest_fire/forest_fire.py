@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Created By  : Bulteau Téo
-# Created Date: August 1 16:30:00 2023
+# Created Date: August 2 11:30:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
 """The Module Has Been Build try zero player games"""
@@ -15,6 +15,7 @@ import tkinter as tk
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from random import random
 import main
 import threading
 
@@ -25,9 +26,12 @@ import threading
 class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
-        self.title("Wireworld")
-        self.color = {0: "black", 1: "yellow", 2: "blue", 3: "red"}
-        self.size = (10, 10)
+        self.title("Forest Fire")
+        self.color = {0: "black", 1: "green", 2: "red"}
+        self.probability_spontaneous_ignition = 0.001
+        self.probability_ignition = 0.9
+        self.probability_spawn = 0.009
+        self.size = (20, 20)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
         self.data = np.zeros(self.size)
@@ -37,7 +41,7 @@ class Application(Tk):
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Create widgets
-        self.start_wireworld()
+        self.start_forest_fire()
 
     def foo(self):
         self.plot()
@@ -48,12 +52,12 @@ class Application(Tk):
         self.update_plt()
         self.canvas.draw()
 
-    def start_wireworld(self):
+    def start_forest_fire(self):
         """
-        start_wireworld is the main script of Wireworld
+        start_forest_fire is the main script of Forest fire
         """
         matplotlib.use('TkAgg')
-        self.wm_title("Wireworld")
+        self.wm_title("Forest Fire")
         self.geometry("800x600")
         self.fig = plt.Figure(figsize=(6, 6))
         self.canvas = FigureCanvasTkAgg(self.fig, self)
@@ -98,6 +102,7 @@ class Application(Tk):
                             (self.data[-y_location][x_location] + 1) % len(self.color)])
                         self.data[-y_location][x_location] = (self.data[-y_location][x_location] + 1) % len(self.color)
                         self.ax.add_patch(rectangle)
+                        self.ax.add_patch(rectangle)
                         self.canvas.draw()
 
         def link_to_f_not_motion(event):
@@ -133,15 +138,24 @@ class Application(Tk):
                 else:
                     if self.data[x + i, y + j] == 2:
                         nb_neighbor += 1
-        # (3 electron tail, 2 electron head, 1 conductor, 0 off)
-        if self.data[x, y] == 1:
-            self.data_update[x, y] = 1
-        if self.data[x, y] == 3:
-            self.data_update[x, y] = 1
-        if self.data[x, y] == 2:
-            self.data_update[x, y] = 3
-        if self.data[x, y] == 1 and (nb_neighbor == 2 or nb_neighbor == 1):
-            self.data_update[x, y] = 2
+        # (2 burning, 1 three, 0 empty)
+        match self.data[x, y]:
+            case 2:
+                self.data_update[x, y] = 0
+            case 1:
+                if nb_neighbor and random() <= self.probability_ignition:
+                    self.data_update[x, y] = 2
+                elif random() <= self.probability_spontaneous_ignition:
+                    self.data_update[x, y] = 2
+                else:
+                    self.data_update[x, y] = 1
+            case 0:
+                if random() <= self.probability_spawn:
+                    self.data_update[x, y] = 1
+                else:
+                    self.data_update[x, y] = 0
+            case _:
+                print("Error", self.data[x, y])
 
     def update_plt(self):
         """
@@ -155,7 +169,7 @@ class Application(Tk):
             """
             color_pixel update the canvas and the data
 
-            :param state: the value of the pixel (3 electron tail, 2 electron head, 1 conductor, 0 off)
+            :param state: the value of the pixel (2 burning, 1 three, 0 empty)
             :param x: x coordinate of the pixel
             :param y: y coordinate of the pixel
             :return: self.data_update the updated datas
@@ -169,8 +183,3 @@ class Application(Tk):
         self.data = self.data_update
         for (line, element), value in np.ndenumerate(self.data):
             color_pixel(value, line, element)
-
-
-if __name__ == "__main__":
-    # execute only if run as a script
-    Application().mainloop()
