@@ -16,6 +16,7 @@ import directory_langton_ant.langton_ant
 import directory_brian_brain.brian_brain
 import directory_wireworld.wireworld
 import directory_forest_fire.forest_fire
+import directory_highlife.highlife
 
 
 # ============================================================================
@@ -59,7 +60,7 @@ class Application(Tk):
                 case "Forest fire":
                     directory_forest_fire.forest_fire.Application().mainloop()
                 case "Highlife":
-                    pass
+                    directory_highlife.highlife.Application().mainloop()
                 case _:
                     showerror("Error", "Game unknown")
 
