@@ -27,7 +27,8 @@ class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("Forest Fire")
-        self.color = {0: (0.2, 0, 0), 1: "green", 2: "orange"}
+        self.color = [(0.2, 0, 0), "green", "orange"]
+        self.step = 0
         self.EMPTY = 0
         self.TREE = 1
         self.FIRE = 2
@@ -40,6 +41,7 @@ class Application(Tk):
         self.pixel_end = (540, 534)
         self.data = np.zeros(self.size)
         self.data_update = np.zeros(self.size)
+        self.step_entry = ttk.Entry()
         self.fig = matplotlib.figure.Figure
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
@@ -49,7 +51,7 @@ class Application(Tk):
         self.interval = 100
         self.im = matplotlib.image.AxesImage
         self.anim = animation.FuncAnimation
-        self.cmap = colors.ListedColormap([(0.2, 0, 0), (0, 0.5, 0), (1, 0, 0), 'orange'])
+        self.cmap = colors.ListedColormap(self.color)  # [(0.2, 0, 0), "green", "orange"]
         self.norm = colors.BoundaryNorm([0, 1, 2, 3], self.cmap.N)
 
         # Create widgets
@@ -62,6 +64,7 @@ class Application(Tk):
         if self.paused:
             pass
         else:
+            self.upload_entry()
             self.im.set_data(self.data)
             self.data = self.update_data()
 
@@ -69,8 +72,17 @@ class Application(Tk):
         """
         plot is a function to advance of one step in the simulation
         """
+        self.upload_entry()
         self.data = self.update_data()
         self.im.set_data(self.data)
+
+    def upload_entry(self):
+        """
+        upload_entry is a function to add + 1 to the step counter
+        """
+        self.step -= -1
+        self.step_entry.delete(0, 2000)
+        self.step_entry.insert(0, "Step : " + str(self.step))
 
     def toggle_pause(self):
         """
@@ -99,6 +111,8 @@ class Application(Tk):
         toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
                                          command=lambda: [self.toggle_pause()])
         toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
+        self.step_entry.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event, movement: int):
             """
@@ -174,18 +188,6 @@ class Application(Tk):
                 if random() <= self.probability_spawn:
                     self.data_update[x, y] = self.TREE
         return self.data_update
-
-    def update_plt(self):
-        """
-        update_plt update the canvas and the data
-        """
-        self.data_update = np.zeros(self.size)
-        self.ax.autoscale(enable=True, axis="x", tight=True)
-        self.ax.autoscale(enable=True, axis="y", tight=True)
-        self.data = self.update_data()
-        for (x, y), value in np.ndenumerate(self.data):
-            rectangle = plt.Rectangle((y, -x), 1, 1, fc=self.color[value])
-            self.ax.add_patch(rectangle)
 
 
 if __name__ == "__main__":
