@@ -19,6 +19,7 @@ from matplotlib import colors
 from matplotlib import animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+
 # ============================================================================
 
 
@@ -26,11 +27,25 @@ class Application(Tk):
     def __init__(self):
         super().__init__()
         self.title("Langton's ant")
-        self.rules = ["L", "L", "R", "R"]
-        self.color = ["white", "green", "blue", "red", "black"]
+
+        # Choose the rules
+        self.brut_rule = "RL"  # No more than 10 characters
+        self.rules = []
+        for element in range(len(self.brut_rule)):
+            self.rules.append(self.brut_rule[element])
+        self.color = ["#" + ''.join([choice('0123456789ABCDEF') for j in range(6)])
+                      for i in range(len(self.rules) + 1)]
+        self.color[0] = "white"
+        self.color[-1] = "black"
+        self.boundary = []
+        for i in range(len(self.brut_rule) + 2):
+            self.boundary.append(i - 0.01)
+        self.boundary[0] = 0
+        self.boundary[-1] = self.boundary[-1] * 10
+
         self.step = 0
         self.show = 1
-        self.size = (10, 10)
+        self.size = (100, 100)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
         self.directions = [1, 2, 3, 4]  # [North : 1, East : 2, South : 3, West : 4]
@@ -45,11 +60,11 @@ class Application(Tk):
 
         # Animation settings
         self.paused = 1
-        self.interval = 100
+        self.interval = 10
         self.im = matplotlib.image.AxesImage
         self.anim = animation.FuncAnimation
         self.cmap = colors.ListedColormap(self.color)  # ["white", "green", "blue", "red"]
-        self.norm = colors.BoundaryNorm([0, 0.99, 1.99, 2.99, 3.99, 10], self.cmap.N)  # number of color HERE
+        self.norm = colors.BoundaryNorm(self.boundary, self.cmap.N)  # number of color HERE
 
         # Create widgets
         self.start_langton_ant()
