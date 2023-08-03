@@ -88,7 +88,7 @@ class Application(Tk):
 
     def start_wireworld(self):
         """
-        start_wireworld is the main script of Forest fire
+        start_wireworld is the main script of Wireworld
         """
         matplotlib.use('TkAgg')
         self.wm_title("Wireworld")
@@ -117,7 +117,6 @@ class Application(Tk):
             :param event: information about the clic of the user (position and more)
             :param movement: information about the movement of the mouse
             """
-            print(event.x, event.y)
             if event.x <= self.pixel_start[0] or event.y <= self.pixel_start[1] or \
                     event.x >= self.pixel_end[0] or event.y >= self.pixel_end[1]:
                 pass
