@@ -5,21 +5,19 @@
 # Created Date: July 20 16:30:00 2023
 # For Wi6labs, all rights reserved
 # =============================================================================
-"""The Module Has Been Build to try zero player games"""
+"""The Module Has Been Build try zero player games"""
 # =============================================================================
 # Imports
-import matplotlib
 import main
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 from tkinter import *
 from tkinter import ttk
 from random import choice
-from threading import Timer
+from matplotlib import colors
+from matplotlib import animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import time
-from matplotlib.figure import Figure
-
 
 # ============================================================================
 
@@ -28,10 +26,11 @@ class Application(Tk):
     def __init__(self):
         super().__init__()
         self.title("Langton's ant")
-        self.rules = [["white", "L"], ["black", "L"], ["Blue", "R"], ["Red", "R"]]
+        self.rules = ["L", "L", "R", "R"]
+        self.color = ["white", "green", "blue", "red", "black"]
         self.step = 0
         self.show = 1
-        self.size = (20, 20)
+        self.size = (10, 10)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
         self.directions = [1, 2, 3, 4]  # [North : 1, East : 2, South : 3, West : 4]
@@ -44,34 +43,50 @@ class Application(Tk):
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
+        # Animation settings
+        self.paused = 1
+        self.interval = 100
+        self.im = matplotlib.image.AxesImage
+        self.anim = animation.FuncAnimation
+        self.cmap = colors.ListedColormap(self.color)  # ["white", "green", "blue", "red"]
+        self.norm = colors.BoundaryNorm([0, 0.99, 1.99, 2.99, 3.99, 10], self.cmap.N)  # number of color HERE
+
         # Create widgets
         self.start_langton_ant()
 
-    def auto(self):
+    def animate(self, i: int):
         """
-        plot is a function that automatically call plot to update the simulation
+        animate is the animation function
         """
-        self.plot()
-        Timer(0.001, self.auto).start()
+        if self.paused:
+            pass
+        else:
+            self.upload_entry()
+            self.im.set_data(self.data)
+            self.data = self.update_data()
 
     def plot(self):
         """
-        plot is a function that update the simulation of one step
+        plot is a function to advance of one step in the simulation
         """
+
         self.upload_entry()
-        self.ax.clear()  # clear axes from previous plot
-        self.data = self.update_plt()
-        self.canvas.draw()
+        self.data = self.update_data()
+        self.im.set_data(self.data)
 
     def upload_entry(self):
+        """
+        upload_entry is a function to add + 1 to the step counter
+        """
         self.step -= -1
         self.step_entry.delete(0, 2000)
         self.step_entry.insert(0, "Step : " + str(self.step))
 
-    def switch(self):
-        self.show += 1
-        if self.show == 2:
-            self.show = 0
+    def toggle_pause(self):
+        """
+        toggle_pause is a function to start/stop the animation
+        """
+        self.paused = not self.paused
 
     def start_langton_ant(self):
         """
@@ -91,12 +106,9 @@ class Application(Tk):
         back_button = ttk.Button(menu_frame, text="Back", cursor="right_ptr",
                                  command=lambda: [main.Application().mainloop()])
         back_button.grid(row=1, column=0, padx=5, pady=10, sticky="ew")
-        auto_button = ttk.Button(menu_frame, text="Auto", cursor="right_ptr",
-                                 command=lambda: [self.auto()])
-        auto_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
-        show_button = ttk.Button(menu_frame, text="Faster", cursor="right_ptr",
-                                 command=lambda: [self.switch()])
-        show_button.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
+        toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
+                                         command=lambda: [self.toggle_pause()])
+        toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
         self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
         self.step_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
 
@@ -120,24 +132,21 @@ class Application(Tk):
                     pass
                 else:
                     if len(str(self.data[-y_location][x_location])) == 1:  # if the user clic on an empty cell
-                        rectangle = plt.Rectangle((x_location + 0.25, y_location + 0.25), 0.5, 0.5, fc="#742B22")
                         self.data[-y_location][x_location] = int(str(choice(self.directions)) + str(
-                            (self.data[-y_location][x_location] % len(self.rules))))
+                            (self.data[-y_location][x_location] % (len(self.rules) - 1))))
                     else:
-                        rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.rules[0][0])
                         self.data[-y_location][x_location] = 0
-                    self.ax.add_patch(rectangle)
-                    self.canvas.draw()
+                    self.im.set_data(self.data)
 
         self.bind("<Button-1>", f)
         self.ax = self.fig.add_subplot(111)
         self.ax.axes.get_xaxis().set_visible(False)
         self.ax.axes.get_yaxis().set_visible(False)
-        self.ax.autoscale(enable=True, axis="x", tight=True)
-        self.ax.autoscale(enable=True, axis="y", tight=True)
-        self.update_plt()
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
+
+        self.im = self.ax.imshow(self.data, cmap=self.cmap, norm=self.norm)
+        self.anim = animation.FuncAnimation(self.fig, self.animate, interval=self.interval, frames=200)
         mainloop()
 
     """
@@ -170,9 +179,9 @@ class Application(Tk):
         else:
             self.data_update[x + self.matrix_rotation_right[direction_facing - 1][0]][
                 y + self.matrix_rotation_right[direction_facing - 1][1]] = int(
-                str(self.directions[direction_facing % 4]) + str(
+                str(self.directions[direction_facing % 4]) + str(int(
                     self.data_update[x + self.matrix_rotation_right[direction_facing - 1][0]]
-                    [y + self.matrix_rotation_right[direction_facing - 1][1]]))
+                    [y + self.matrix_rotation_right[direction_facing - 1][1]])))
 
     def turn_left(self, x: int, y: int, direction_facing: int):
         """
@@ -188,40 +197,43 @@ class Application(Tk):
         else:
             self.data_update[x + self.matrix_rotation_left[direction_facing - 1][0]][
                 y + self.matrix_rotation_left[direction_facing - 1][1]] = int(
-                str(self.directions[(direction_facing - 2) % 4]) + str(
+                str(self.directions[(direction_facing - 2) % 4]) + str(int(
                     self.data_update[x + self.matrix_rotation_left[direction_facing - 1][0]]
-                    [y + self.matrix_rotation_left[direction_facing - 1][1]]))
+                    [y + self.matrix_rotation_left[direction_facing - 1][1]])))
 
-    def update_data(self, x: int, y: int, state: str):
+    def update_data(self):
         """
         update_data is a function that update the data to one step
-
-        :param x: x position of the pixel
-        :param y: y position of the pixel
-        :param state: information about the facing direction of the ant [North : 1, East : 2, South : 3, West : 4]
         """
-        if len(state) == 1:  # Pass the empty cells
-            pass
-        else:
-            for i in range(len(state) - 1):
-                match self.rules[int(state[-1:])][1]:
-                    case "R":  # turn to right
-                        self.turn_right(x, y, int(state[i]))
-                    case "L":  # turn to left
-                        self.turn_left(x, y, int(state[i]))
-                    case "C":  # straight ahead
-                        pass
-                    case "U":  # turn 180° around
-                        pass
-                    case _:
-                        print("error", int(state[-1:]))
+        self.data_update = np.full(self.size, 0, dtype=int)
+        for (line, element), value in np.ndenumerate(self.data_update):  # first create the floor canvas
+            # Iterate over the elements and their indices using np.ndenumerate
+            self.data_update[line][element] = int(str(self.data[line][element])[-1:])
+        for (x, y), value in np.ndenumerate(self.data):
+            state = str(self.data[x][y])
+            if len(state) == 1:  # Pass the empty cells
+                pass
+            else:
+                for i in range(len(state) - 1):
+                    match self.rules[int(state[-1:])]:
+                        case "R":  # turn to right
+                            self.turn_right(x, y, int(state[i]))
+                        case "L":  # turn to left
+                            self.turn_left(x, y, int(state[i]))
+                        case "C":  # straight ahead
+                            pass
+                        case "U":  # turn 180° around
+                            pass
+                        case _:
+                            print("error", int(state[-1:]))
 
-            # change the color of the cell according to a cycle
-            if len(str(self.data[x][y])) != 1:  # if there is at least one ant
-                self.data_update[x][y] = int(str(self.data_update[x][y])[:-1] + str(
-                    ((int(state[-1:]) + 1) % len(self.rules))))
-            else:  # if the cell is empty
-                self.data_update[x][y] = ((int(state[-1:]) + 1) % len(self.rules))
+                # change the color of the cell according to a cycle
+                if len(str(self.data[x][y])) != 1:  # if there is at least one ant
+                    self.data_update[x][y] = float(str(self.data_update[x][y])[:-1] + str(
+                        ((int(state[-1:]) + 1) % len(self.rules))))
+                else:  # if the cell is empty
+                    self.data_update[x][y] = ((int(state[-1:]) + 1) % len(self.rules))
+        return self.data_update
 
     def out_of_bounds(self, x: int, y: int, state: int, type_rotation: np.ndarray):
         """
@@ -241,40 +253,3 @@ class Application(Tk):
             return 1
         else:
             return 0
-
-    def update_plt(self):
-        """
-        update_plt is a function that update the plot to the next step
-        """
-        self.data_update = np.full(self.size, 0, dtype=int)  # clear data_update
-        self.ax.autoscale(enable=True, axis="x", tight=True)
-        self.ax.autoscale(enable=True, axis="y", tight=True)
-
-        def color_pixel(state: int, x: int, y: int):
-            """
-            color_pixel is a function that color a pixel in the canvas
-
-            :param state: value to color
-            :param x: x position of the pixel
-            :param y: y position of the pixel
-
-            :return self.data_update: the updated datas
-            """
-            if len(str(state)) == 1:  # if there is no ants
-                rectangle = plt.Rectangle((y, -x), 1, 1, fc=self.rules[state][0])
-                self.ax.add_patch(rectangle)
-            else:
-                rectangle = plt.Rectangle((y, -x), 1, 1, fc=self.rules[int(str(state)[-1:])][0])
-                ant = plt.Rectangle((y + 0.25, -x + 0.25), 0.5, 0.5, fc="#742B22")
-                self.ax.add_patch(rectangle)
-                self.ax.add_patch(ant)
-        for (line, element), value in np.ndenumerate(self.data_update):  # first create the floor canvas
-            # Iterate over the elements and their indices using np.ndenumerate
-            self.data_update[line][element] = int(str(self.data[line][element])[-1:])
-        for (line, element), value in np.ndenumerate(self.data):  # update the datas
-            self.update_data(line, element, str(value))
-        if self.show:
-            for (line, element), value in np.ndenumerate(self.data_update):  # update the pixels of the canvas TOO LONG
-                color_pixel(int(value), line, element)
-
-        return self.data_update
