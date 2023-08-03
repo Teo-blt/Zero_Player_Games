@@ -8,17 +8,17 @@
 """The Module Has Been Build try zero player games"""
 # =============================================================================
 # Imports
+import main
+import matplotlib
+import numpy as np
+import tkinter as tk
+import matplotlib.pyplot as plt
 from tkinter import *
 from tkinter import ttk
-import matplotlib
-import tkinter as tk
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from random import random
-import main
-import threading
-
+from matplotlib import colors
+from matplotlib import animation
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # ============================================================================
 
@@ -27,8 +27,12 @@ class Application(Tk):
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("Forest Fire")
-        self.color = {0: "black", 1: "green", 2: "orange"}
+        self.color = {0: (0.2, 0, 0), 1: "green", 2: "orange"}
+        self.EMPTY = 0
+        self.TREE = 1
+        self.FIRE = 2
         self.probability_spontaneous_ignition = 0.001
+        self.probability_diagonally_ignition = 0.573
         self.probability_ignition = 0.9
         self.probability_spawn = 0.05
         self.size = (20, 20)
@@ -40,17 +44,39 @@ class Application(Tk):
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
+        # Animation settings
+        self.paused = 1
+        self.interval = 100
+        self.im = matplotlib.image.AxesImage
+        self.anim = animation.FuncAnimation
+        self.cmap = colors.ListedColormap([(0.2, 0, 0), (0, 0.5, 0), (1, 0, 0), 'orange'])
+        self.norm = colors.BoundaryNorm([0, 1, 2, 3], self.cmap.N)
+
         # Create widgets
         self.start_forest_fire()
 
-    def foo(self):
-        self.plot()
-        threading.Timer(0.5, self.foo).start()
+    def animate(self, i: int):
+        """
+        animate is the animation function
+        """
+        if self.paused:
+            pass
+        else:
+            self.im.set_data(self.data)
+            self.data = self.update_data()
 
     def plot(self):
-        self.ax.clear()  # clear axes from previous plot
-        self.update_plt()
-        self.canvas.draw()
+        """
+        plot is a function to advance of one step in the simulation
+        """
+        self.data = self.update_data()
+        self.im.set_data(self.data)
+
+    def toggle_pause(self):
+        """
+        toggle_pause is a function to start/stop the animation
+        """
+        self.paused = not self.paused
 
     def start_forest_fire(self):
         """
@@ -69,10 +95,10 @@ class Application(Tk):
         plot_button.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
         back_button = ttk.Button(menu_frame, text="Back", cursor="right_ptr",
                                  command=lambda: [main.Application().mainloop()])
-        back_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
-        auto_button = ttk.Button(menu_frame, text="Auto", cursor="right_ptr",
-                                 command=lambda: [self.foo()])
-        auto_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        back_button.grid(row=1, column=0, padx=5, pady=10, sticky="ew")
+        toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
+                                         command=lambda: [self.toggle_pause()])
+        toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event, movement: int):
             """
@@ -98,12 +124,8 @@ class Application(Tk):
                         pass
                     else:
                         self.past_value = (x_location, y_location)
-                        rectangle = plt.Rectangle((x_location, y_location), 1, 1, fc=self.color[
-                            (self.data[-y_location][x_location] + 1) % len(self.color)])
                         self.data[-y_location][x_location] = (self.data[-y_location][x_location] + 1) % len(self.color)
-                        self.ax.add_patch(rectangle)
-                        self.ax.add_patch(rectangle)
-                        self.canvas.draw()
+                        self.im.set_data(self.data)
 
         def link_to_f_not_motion(event):
             f(event, 0)
@@ -116,46 +138,42 @@ class Application(Tk):
         self.ax = self.fig.add_subplot(111)
         self.ax.axes.get_xaxis().set_visible(False)
         self.ax.axes.get_yaxis().set_visible(False)
-        self.update_plt()
         self.tk.call("source", "azure.tcl")
         self.tk.call("set_theme", "light")
+
+        self.im = self.ax.imshow(self.data, cmap=self.cmap, norm=self.norm)
+        self.anim = animation.FuncAnimation(self.fig, self.animate, interval=self.interval, frames=200)
         tk.mainloop()
 
-    def update_data(self, x: int, y: int):
+    def update_data(self):
         """
         update_data is a function that update the data to one step
-
-        :param x: x position of the pixel
-        :param y: y position of the pixel
         """
-        nb_neighbor = 0
-        for i in [-1, 0, 1]:
-            for j in [-1, 0, 1]:
-                if x + i < 0 or y + j < 0 or x + i > self.size[0] - 1 or y + j > self.size[1] - 1:
-                    pass
-                elif i == 0 and j == 0:
-                    pass
-                else:
-                    if self.data[x + i, y + j] == 2:
-                        nb_neighbor += 1
-        # (2 burning, 1 three, 0 empty)
-        match self.data[x, y]:
-            case 2:
-                self.data_update[x, y] = 0
-            case 1:
-                if nb_neighbor and random() <= self.probability_ignition:
-                    self.data_update[x, y] = 2
-                elif random() <= self.probability_spontaneous_ignition:
-                    self.data_update[x, y] = 2
-                else:
-                    self.data_update[x, y] = 1
-            case 0:
+        self.data_update = np.zeros(self.size)
+        for (x, y), value in np.ndenumerate(self.data):
+            # (2 burning, 1 three, 0 empty)
+            if self.data[x, y] == self.TREE:
+                self.data_update[x, y] = self.TREE
+                for i in [-1, 0, 1]:
+                    for j in [-1, 0, 1]:
+                        if x + i < 0 or y + j < 0 or x + i > self.size[0] - 1 or y + j > self.size[1] - 1:
+                            continue
+                        elif i == 0 and j == 0:
+                            continue
+                        # The diagonally-adjacent trees are further away, so
+                        # only catch fire with a reduced probability:
+                        elif abs(i) == abs(j) and random() < self.probability_diagonally_ignition:
+                            continue
+                        else:
+                            if self.data[x + i, y + j] == self.FIRE:
+                                self.data_update[x, y] = self.FIRE
+                                break
+                if random() <= self.probability_spontaneous_ignition:
+                    self.data_update[x, y] = self.FIRE
+            if self.data[x, y] == self.EMPTY:
                 if random() <= self.probability_spawn:
-                    self.data_update[x, y] = 1
-                else:
-                    self.data_update[x, y] = 0
-            case _:
-                print("Error", self.data[x, y])
+                    self.data_update[x, y] = self.TREE
+        return self.data_update
 
     def update_plt(self):
         """
@@ -164,25 +182,10 @@ class Application(Tk):
         self.data_update = np.zeros(self.size)
         self.ax.autoscale(enable=True, axis="x", tight=True)
         self.ax.autoscale(enable=True, axis="y", tight=True)
-
-        def color_pixel(state, x, y):
-            """
-            color_pixel update the canvas and the data
-
-            :param state: the value of the pixel (2 burning, 1 three, 0 empty)
-            :param x: x coordinate of the pixel
-            :param y: y coordinate of the pixel
-            :return: self.data_update the updated datas
-            """
-            rectangle = plt.Rectangle((y, -x), 1, 1, fc=self.color[state])
+        self.data = self.update_data()
+        for (x, y), value in np.ndenumerate(self.data):
+            rectangle = plt.Rectangle((y, -x), 1, 1, fc=self.color[value])
             self.ax.add_patch(rectangle)
-
-        # Iterate over the elements and their indices using np.ndenumerate
-        for (line, element), value in np.ndenumerate(self.data):
-            self.update_data(line, element)
-        self.data = self.data_update
-        for (line, element), value in np.ndenumerate(self.data):
-            color_pixel(value, line, element)
 
 
 if __name__ == "__main__":
