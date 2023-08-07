@@ -17,6 +17,7 @@ import directory_brian_brain.brian_brain
 import directory_wireworld.wireworld
 import directory_forest_fire.forest_fire
 import directory_highlife.highlife
+import directory_wa_tor.wa_tor
 
 
 # ============================================================================
@@ -29,7 +30,8 @@ class Application(Tk):
         self.color = "#E76145"
         self.current_table = StringVar()
         # Create value lists
-        self.combo_list = ["Game of life", "Langton's ant", "Brian's brain", "Wireworld", "Forest fire", "Highlife"]
+        self.combo_list = ["Game of life", "Langton's ant", "Brian's brain", "Wireworld", "Forest fire", "Highlife",
+                           "WA-TOR"]
 
         # Create widgets
         self.main_window()
@@ -61,6 +63,8 @@ class Application(Tk):
                     directory_forest_fire.forest_fire.Application().mainloop()
                 case "Highlife":
                     directory_highlife.highlife.Application().mainloop()
+                case "WA-TOR":
+                    directory_wa_tor.wa_tor.Application().mainloop()
                 case _:
                     showerror("Error", "Game unknown")
 

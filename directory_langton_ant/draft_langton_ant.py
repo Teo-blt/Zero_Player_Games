@@ -45,7 +45,7 @@ class Application(Tk):
 
         self.step = 0
         self.show = 1
-        self.size = (100, 100)
+        self.size = (10, 10)
         self.pixel_start = (75, 72)  # top left pixel
         self.pixel_end = (540, 534)  # bottom right pixel
         self.directions = [1, 2, 3, 4]  # [North : 1, East : 2, South : 3, West : 4]
@@ -60,7 +60,7 @@ class Application(Tk):
 
         # Animation settings
         self.paused = 1
-        self.interval = 10
+        self.interval = 25
         self.im = matplotlib.image.AxesImage
         self.anim = animation.FuncAnimation
         self.cmap = colors.ListedColormap(self.color)  # ["white", "green", "blue", "red"]
