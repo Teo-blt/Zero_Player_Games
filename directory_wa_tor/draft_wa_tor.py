@@ -27,7 +27,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 class Creature:
     """A sea creature living in Wa-Tor world."""
 
-    def __init__(self, id, x, y, init_energy, fertility_threshold):
+    def __init__(self, id, x, y, init_energy, fertility_threshold, gender):
         """Initialize the creature.
 
         id is an integer identifying the creature.
@@ -43,6 +43,7 @@ class Creature:
         self.x, self.y = x, y
         self.energy = init_energy
         self.fertility_threshold = fertility_threshold
+        self.gender = gender
         self.fertility = 0
         self.dead = False
 
@@ -52,13 +53,18 @@ class Application(Tk):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("WA-TOR")
         self.color = ["black", "green", "blue"]
+        self.type_of_gender = ["male", "female"]  # I SPECIFY, WE ARE TALKING ABOUT FISH
         self.neighbor = ((0, -1), (1, 0), (0, 1), (-1, 0))
         self.creatures = []
+        self.possible_movement = []
+        self.no_pray_movement = []
         self.SEED = 10
         self.step = 0
         self.EMPTY = 0
         self.FISH = 1
         self.SHARK = 2
+        self.nb_fish = 0
+        self.nb_shark = 0
         self.size = (10, 10)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
@@ -69,13 +75,15 @@ class Application(Tk):
         self.data = np.zeros(self.size, dtype=object)
         self.data_update = np.zeros(self.size, dtype=object)
         self.step_entry = ttk.Entry()
+        self.fish_entry = ttk.Entry()
+        self.shark_entry = ttk.Entry()
         self.fig = matplotlib.figure.Figure
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
 
         # Animation settings
         self.paused = 1
-        self.interval = 200
+        self.interval = 100
         self.im = matplotlib.image.AxesImage
         self.anim = animation.FuncAnimation
         self.cmap = colors.ListedColormap(self.color)  # ["black", "green", "blue"]
@@ -112,9 +120,10 @@ class Application(Tk):
         """
         plot is a function to advance of one step in the simulation
         """
-        self.upload_entry()
         self.data = self.update_data()
+        self.upload_entry()
         self.im.set_data(self.good_ani_format())
+        print(self.data)
 
     def upload_entry(self):
         """
@@ -123,6 +132,10 @@ class Application(Tk):
         self.step -= -1
         self.step_entry.delete(0, 2000)
         self.step_entry.insert(0, "Step : " + str(self.step))
+        self.fish_entry.delete(0, 2000)
+        self.fish_entry.insert(0, "Number of fish : " + str(self.nb_fish))
+        self.shark_entry.delete(0, 2000)
+        self.shark_entry.insert(0, "Number of shark : " + str(self.nb_shark))
 
     def toggle_pause(self):
         """
@@ -153,6 +166,10 @@ class Application(Tk):
         toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
         self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
         self.step_entry.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
+        self.fish_entry = ttk.Entry(menu_frame, cursor="right_ptr")
+        self.fish_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
+        self.shark_entry = ttk.Entry(menu_frame, cursor="right_ptr")
+        self.shark_entry.grid(row=5, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event, movement: int):
             """
@@ -193,6 +210,7 @@ class Application(Tk):
         def link_to_f_motion(event: Event):
             f(event, 1)
 
+        self.upload_entry()
         self.bind("<Button-1>", link_to_f_not_motion)
         self.bind("<B1-Motion>", link_to_f_motion)
         self.ax = self.fig.add_subplot(111)
@@ -208,19 +226,27 @@ class Application(Tk):
     def destroy_creature(self, x: int, y: int):
         """
         destroy_creature remove a creature from the creatures list
+
+        :param x: x position of the creature to destroy
+        :param y: y position of the creature to destroy
         """
         self.creatures.remove(self.data[-y][x])
 
     def spawn_creature(self, creature_id: int, x: int, y: int):
         """
         spawn_creature Spawn a creature of type ID creature_id at location x,y
+
+        :param creature_id: type of creature to spawn
+        :param x: x position of the creature to spawn
+        :param y: y position of the creature to spawn
         """
         if creature_id == self.EMPTY:
             self.data[-y][x] = self.EMPTY
         else:
             creature = Creature(creature_id, x, y,
                                 self.initial_energies[creature_id],
-                                self.fertility_thresholds[creature_id])
+                                self.fertility_thresholds[creature_id],
+                                choice(self.type_of_gender))
             self.creatures.append(creature)
             self.data[-y][x] = creature
 
@@ -234,35 +260,61 @@ class Application(Tk):
 
         # NB The self.creatures list is going to grow as new creatures are
         # spawned, so loop over indices into the list as it stands now.
-        ncreatures = len(self.creatures)
-        for i in range(ncreatures):
+        n_creatures = len(self.creatures)
+        self.nb_fish = 0
+        self.nb_shark = 0
+        for i in range(n_creatures):
             creature = self.creatures[i]
+            if creature.dead:
+                # This creature has been eaten so skip it.
+                continue
+            if creature.id == self.SHARK:
+                self.nb_shark += 1
+            else:
+                self.nb_fish += 1
+            self.detect_neighbor(creature, -creature.y, creature.x)
             self.move(creature, -creature.y, creature.x)
+            self.loose_energy(creature)
+            self.reproduce(creature)
+        self.remove_dead()
         return self.data_update
 
-    def move(self, the_creature, position_x: int, position_y: int):
+    def detect_neighbor(self, the_creature, position_x: int, position_y: int):
         """
-        move is a function that move a creature of one step
+        detect_neighbor is a function that detect all the neighbor
+
+        :param the_creature: class Creature
+        :param position_x: x position of the creature to move
+        :param position_y: y position of the creature to move
         """
-        possible_movement = []
-        no_pray_movement = []
+        self.possible_movement = []
+        self.no_pray_movement = []
         for dx, dy in self.neighbor:
             if (position_x + dx >= self.size[0] or position_x + dx < 0 or position_y + dy >= self.size[1]
                     or position_y + dy < 0):  # check if it is out of limits
                 continue
             if the_creature.id == self.FISH:
                 if self.data[position_x + dx, position_y + dy] == self.EMPTY:
-                    possible_movement.append((dx, dy))
+                    self.possible_movement.append((dx, dy))
             else:
                 if self.data[position_x + dx, position_y + dy] == self.EMPTY:
-                    no_pray_movement.append((dx, dy))
+                    self.no_pray_movement.append((dx, dy))
                 else:
                     if self.data[position_x + dx, position_y + dy].id == self.FISH:
-                        possible_movement.append((dx, dy))
+                        self.possible_movement.append((dx, dy))
+
+    def move(self, the_creature, position_x: int, position_y: int):
+        """
+        move is a function that move a creature of one step
+
+        :param the_creature: class Creature
+        :param position_x: x position of the creature to move
+        :param position_y: y position of the creature to move
+        """
 
         if the_creature.id == self.FISH:
-            if len(possible_movement) != 0:
-                (x, y) = choice(possible_movement)
+            if len(self.possible_movement) != 0:
+                (x, y) = choice(self.possible_movement)
                 self.data_update[position_x, position_y] = 0
                 self.data_update[position_x + x, position_y + y] = the_creature
                 the_creature.x += y
@@ -270,21 +322,48 @@ class Application(Tk):
             else:
                 self.data_update[position_x, position_y] = the_creature
         elif the_creature.id == self.SHARK:
-            if len(possible_movement) != 0:
-                (x, y) = choice(possible_movement)
+            if len(self.possible_movement) != 0:
+                (x, y) = choice(self.possible_movement)
                 self.data_update[position_x, position_y] = 0
                 self.data_update[position_x + x, position_y + y] = the_creature
                 the_creature.x += y
                 the_creature.y -= x
             else:
-                if len(no_pray_movement) != 0:
-                    (x, y) = choice(no_pray_movement)
+                if len(self.no_pray_movement) != 0:
+                    (x, y) = choice(self.no_pray_movement)
                     self.data_update[position_x, position_y] = 0
                     self.data_update[position_x + x, position_y + y] = the_creature
                     the_creature.x += y
                     the_creature.y -= x
                 else:
                     self.data_update[position_x, position_y] = the_creature
+
+    def loose_energy(self, the_creature):
+        """
+        loose_energy is a function that remove energy of the concerned creatures
+
+        :param the_creature: class Creature
+        """
+        if the_creature.id == self.SHARK:
+            the_creature.energy -= 1
+            if the_creature.energy < 0:
+                the_creature.dead = True
+
+    def reproduce(self, the_creature):
+        """
+        reproduce is a function that reproduce the selected creature
+
+        :param the_creature: class Creature
+        """
+        the_creature.fertility += 1
+        if the_creature.fertility >= the_creature.fertility_threshold:
+            the_creature.fertility = 0
+
+    def remove_dead(self):
+        for creature in self.creatures:
+            if creature.dead:
+                self.destroy_creature(creature.x, creature.y)
+                self.data[-creature.y][creature.x] = 0
 
 
 if __name__ == "__main__":
