@@ -24,16 +24,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # ============================================================================
 
-
-def extract_first_digit(matrix):
-    """
-    extract_first_digit is a function to convert numpy matrix in integer matrix
-    """
-    int_matrix = matrix.astype(int)
-    first_digit_matrix = np.vectorize(lambda x: int(str(x)[0]))(int_matrix)
-    return first_digit_matrix
-
-
 class Creature:
     """A sea creature living in Wa-Tor world."""
 
@@ -85,7 +75,7 @@ class Application(Tk):
 
         # Animation settings
         self.paused = 1
-        self.interval = 100
+        self.interval = 200
         self.im = matplotlib.image.AxesImage
         self.anim = animation.FuncAnimation
         self.cmap = colors.ListedColormap(self.color)  # ["black", "green", "blue"]
@@ -106,6 +96,9 @@ class Application(Tk):
             self.data = self.update_data()
 
     def good_ani_format(self):
+        """
+        good_ani_format is a function to extract only the id of the data matrix
+        """
         self.data_for_ani = np.zeros(self.size, dtype=int)
         for i in range(self.size[0]):
             for j in range(self.size[1]):
@@ -185,8 +178,13 @@ class Application(Tk):
                         pass
                     else:
                         self.past_value = (x_location, y_location)
-                        self.spawn_creature((self.data[-y_location][x_location] + 1) % len(self.color),
-                                            x_location, y_location)
+                        if type(self.data[-y_location][x_location]) == int:
+                            self.spawn_creature((self.data[-y_location][x_location] + 1) % len(self.color),
+                                                x_location, y_location)
+                        else:
+                            self.destroy_creature(x_location, y_location)
+                            self.spawn_creature((self.data[-y_location][x_location].id + 1) % len(self.color),
+                                                x_location, y_location)
                         self.im.set_data(self.good_ani_format())
 
         def link_to_f_not_motion(event: Event):
@@ -207,60 +205,86 @@ class Application(Tk):
         self.anim = animation.FuncAnimation(self.fig, self.animate, interval=self.interval, frames=200)
         tk.mainloop()
 
-    def spawn_creature(self, creature_id, x, y):
-        """Spawn a creature of type ID creature_id at location x,y."""
+    def destroy_creature(self, x: int, y: int):
+        """
+        destroy_creature remove a creature from the creatures list
+        """
+        self.creatures.remove(self.data[-y][x])
 
-        creature = Creature(creature_id, x, y,
-                            self.initial_energies[creature_id],
-                            self.fertility_thresholds[creature_id])
-        self.creatures.append(creature)
-        self.data[-y][x] = creature
+    def spawn_creature(self, creature_id: int, x: int, y: int):
+        """
+        spawn_creature Spawn a creature of type ID creature_id at location x,y
+        """
+        if creature_id == self.EMPTY:
+            self.data[-y][x] = self.EMPTY
+        else:
+            creature = Creature(creature_id, x, y,
+                                self.initial_energies[creature_id],
+                                self.fertility_thresholds[creature_id])
+            self.creatures.append(creature)
+            self.data[-y][x] = creature
 
     def update_data(self):
         """
         update_data is a function that update the data to one step
         """
-        self.data_update = np.zeros(self.size, dtype=object)
-        for (x, y), value in np.ndenumerate(self.data):
-            if self.data[x, y] == self.EMPTY:
-                continue
-            self.move(x, y)
+        # Shuffle the creatures grid so that we don't always evolve the same
+        # creatures first.
+        random.shuffle(self.creatures)
+
+        # NB The self.creatures list is going to grow as new creatures are
+        # spawned, so loop over indices into the list as it stands now.
+        ncreatures = len(self.creatures)
+        for i in range(ncreatures):
+            creature = self.creatures[i]
+            self.move(creature, -creature.y, creature.x)
         return self.data_update
 
-    def move(self, position_x: int, position_y: int):
+    def move(self, the_creature, position_x: int, position_y: int):
+        """
+        move is a function that move a creature of one step
+        """
         possible_movement = []
         no_pray_movement = []
         for dx, dy in self.neighbor:
             if (position_x + dx >= self.size[0] or position_x + dx < 0 or position_y + dy >= self.size[1]
                     or position_y + dy < 0):  # check if it is out of limits
                 continue
-            if self.data[position_x, position_y].id == self.FISH:
+            if the_creature.id == self.FISH:
                 if self.data[position_x + dx, position_y + dy] == self.EMPTY:
                     possible_movement.append((dx, dy))
             else:
-                if self.data[position_x + dx, position_y + dy].id == self.FISH:
-                    possible_movement.append((dx, dy))
                 if self.data[position_x + dx, position_y + dy] == self.EMPTY:
                     no_pray_movement.append((dx, dy))
-        if self.data[position_x, position_y].id == self.FISH:
+                else:
+                    if self.data[position_x + dx, position_y + dy].id == self.FISH:
+                        possible_movement.append((dx, dy))
+
+        if the_creature.id == self.FISH:
             if len(possible_movement) != 0:
                 (x, y) = choice(possible_movement)
                 self.data_update[position_x, position_y] = 0
-                self.data_update[position_x + x, position_y + y] = self.data[position_x, position_y]
+                self.data_update[position_x + x, position_y + y] = the_creature
+                the_creature.x += y
+                the_creature.y -= x
             else:
-                self.data_update[position_x, position_y] = self.data[position_x, position_y]
-        elif self.data[position_x, position_y].id == self.SHARK:
+                self.data_update[position_x, position_y] = the_creature
+        elif the_creature.id == self.SHARK:
             if len(possible_movement) != 0:
                 (x, y) = choice(possible_movement)
                 self.data_update[position_x, position_y] = 0
-                self.data_update[position_x + x, position_y + y] = self.data[position_x, position_y]
+                self.data_update[position_x + x, position_y + y] = the_creature
+                the_creature.x += y
+                the_creature.y -= x
             else:
                 if len(no_pray_movement) != 0:
                     (x, y) = choice(no_pray_movement)
                     self.data_update[position_x, position_y] = 0
-                    self.data_update[position_x + x, position_y + y] = self.data[position_x, position_y]
+                    self.data_update[position_x + x, position_y + y] = the_creature
+                    the_creature.x += y
+                    the_creature.y -= x
                 else:
-                    self.data_update[position_x, position_y] = self.data[position_x, position_y]
+                    self.data_update[position_x, position_y] = the_creature
 
 
 if __name__ == "__main__":
