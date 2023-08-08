@@ -75,7 +75,6 @@ class Application(Tk):
         random.seed(self.SEED)
         self.data_for_ani = np.zeros(self.size, dtype=int)
         self.data = np.zeros(self.size, dtype=object)
-        self.data_update = np.zeros(self.size, dtype=object)
         self.step_entry = ttk.Entry()
         self.fish_entry = ttk.Entry()
         self.shark_entry = ttk.Entry()
@@ -103,7 +102,7 @@ class Application(Tk):
         else:
             self.upload_entry()
             self.im.set_data(self.good_ani_format())
-            self.data = self.update_data()
+            self.update_data()
 
     def good_ani_format(self):
         """
@@ -122,7 +121,7 @@ class Application(Tk):
         """
         plot is a function to advance of one step in the simulation
         """
-        self.data = self.update_data()
+        self.update_data()
         self.upload_entry()
         self.im.set_data(self.good_ani_format())
 
@@ -200,7 +199,7 @@ class Application(Tk):
                             self.spawn_creature((self.data[-y_location][x_location] + 1) % len(self.color),
                                                 x_location, y_location)
                         else:
-                            self.destroy_creature(x_location, y_location)
+                            self.creatures.remove(self.data[-y_location][x_location])
                             self.spawn_creature((self.data[-y_location][x_location].id + 1) % len(self.color),
                                                 x_location, y_location)
                         self.im.set_data(self.good_ani_format())
@@ -223,15 +222,6 @@ class Application(Tk):
         self.im = self.ax.imshow(self.data_for_ani, cmap=self.cmap, norm=self.norm)
         self.anim = animation.FuncAnimation(self.fig, self.animate, interval=self.interval, frames=200)
         tk.mainloop()
-
-    def destroy_creature(self, x: int, y: int):
-        """
-        destroy_creature remove a creature from the creatures list
-
-        :param x: x position of the creature to destroy
-        :param y: y position of the creature to destroy
-        """
-        self.creatures.remove(self.data[-y][x])
 
     def spawn_creature(self, creature_id: int, x: int, y: int):
         """
@@ -275,12 +265,9 @@ class Application(Tk):
                 self.nb_fish += 1
             self.detect_neighbor(creature, -creature.y, creature.x)
             self.move(creature, -creature.y, creature.x)
-            self.eat(creature)
             self.loose_energy(creature)
             self.reproduce(creature)
-            print(self.data_update)
         self.remove_dead()
-        return self.data_update
 
     def detect_neighbor(self, the_creature: Creature, position_x: int, position_y: int):
         """
@@ -319,40 +306,34 @@ class Application(Tk):
         if the_creature.id == self.FISH:
             if len(self.possible_movement) != 0:
                 (x, y) = choice(self.possible_movement)
-                self.data_update[position_x, position_y] = 0
-                self.data_update[position_x + x, position_y + y] = the_creature
+                self.data[position_x, position_y] = 0
+                self.data[position_x + x, position_y + y] = the_creature
                 the_creature.x += y
                 the_creature.y -= x
                 self.moved = True
             else:
-                self.data_update[position_x, position_y] = the_creature
+                self.data[position_x, position_y] = the_creature
         elif the_creature.id == self.SHARK:
             if len(self.possible_movement) != 0:
                 (x, y) = choice(self.possible_movement)
-                self.data_update[position_x, position_y] = 0
-                self.data_update[position_x + x, position_y + y] = the_creature
+                self.data[position_x + x, position_y + y].dead = True  # eat the fish
+                self.data[position_x, position_y] = 0
+                self.data[position_x + x, position_y + y] = the_creature
+                the_creature.energy += 2
                 the_creature.x += y
                 the_creature.y -= x
                 self.moved = True
             else:
                 if len(self.no_pray_movement) != 0:
                     (x, y) = choice(self.no_pray_movement)
-                    self.data_update[position_x, position_y] = 0
-                    self.data_update[position_x + x, position_y + y] = the_creature
+                    self.data[position_x, position_y] = 0
+                    self.data[position_x + x, position_y + y] = the_creature
                     the_creature.x += y
                     the_creature.y -= x
                     self.moved = True
                 else:
-                    self.data_update[position_x, position_y] = the_creature
+                    self.data[position_x, position_y] = the_creature
         self.previous_step = x, y
-
-    def eat(self, the_creature: Creature):
-        if the_creature.id == self.SHARK:
-            if len(self.possible_movement) != 0:
-                print("miam miam")
-                the_creature.energy += 3
-                self.data[-the_creature.y][the_creature.x].dead = True
-                self.nb_fish -= 1
 
     def loose_energy(self, the_creature: Creature):
         """
@@ -387,8 +368,9 @@ class Application(Tk):
     def remove_dead(self):
         for creature in self.creatures:
             if creature.dead:
-                self.destroy_creature(creature.x, creature.y)
-                self.data[-creature.y][creature.x] = 0
+                self.creatures.remove(creature)
+                if creature.energy < 0:
+                    self.data[-creature.y][creature.x] = 0
 
 
 if __name__ == "__main__":
