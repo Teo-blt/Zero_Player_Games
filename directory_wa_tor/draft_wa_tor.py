@@ -274,13 +274,15 @@ class Application(Tk):
             else:
                 self.nb_fish += 1
             self.detect_neighbor(creature, -creature.y, creature.x)
-            self.previous_step = self.move(creature, -creature.y, creature.x)
+            self.move(creature, -creature.y, creature.x)
+            self.eat(creature)
             self.loose_energy(creature)
             self.reproduce(creature)
+            print(self.data_update)
         self.remove_dead()
         return self.data_update
 
-    def detect_neighbor(self, the_creature, position_x: int, position_y: int):
+    def detect_neighbor(self, the_creature: Creature, position_x: int, position_y: int):
         """
         detect_neighbor is a function that detect all the neighbor
 
@@ -304,7 +306,7 @@ class Application(Tk):
                     if self.data[position_x + dx, position_y + dy].id == self.FISH:
                         self.possible_movement.append((dx, dy))
 
-    def move(self, the_creature, position_x: int, position_y: int):
+    def move(self, the_creature: Creature, position_x: int, position_y: int):
         """
         move is a function that move a creature of one step
 
@@ -342,20 +344,31 @@ class Application(Tk):
                     self.moved = True
                 else:
                     self.data_update[position_x, position_y] = the_creature
-        return x, y
+        self.previous_step = x, y
 
-    def loose_energy(self, the_creature):
+    def eat(self, the_creature: Creature):
+        if the_creature.id == self.SHARK:
+            if len(self.possible_movement) != 0:
+                print("miam miam")
+                the_creature.energy += 3
+                self.data[-the_creature.y][the_creature.x].dead = True
+                self.nb_fish -= 1
+
+    def loose_energy(self, the_creature: Creature):
         """
         loose_energy is a function that remove energy of the concerned creatures
 
         :param the_creature: class Creature
         """
-        if the_creature.id == self.SHARK:
-            the_creature.energy -= 1
-            if the_creature.energy < 0:
-                the_creature.dead = True
+        the_creature.energy -= 1
+        if the_creature.energy < 0:
+            the_creature.dead = True
+            if the_creature.id == self.SHARK:
+                self.nb_shark -= 1
+            else:
+                self.nb_fish -= 1
 
-    def reproduce(self, the_creature):
+    def reproduce(self, the_creature: Creature):
         """
         reproduce is a function that reproduce the selected creature
 
@@ -366,6 +379,10 @@ class Application(Tk):
             the_creature.fertility = 0
             self.spawn_creature(the_creature.id, the_creature.x - self.previous_step[1],
                                 the_creature.y + self.previous_step[0])
+            if the_creature.id == self.SHARK:
+                self.nb_shark += 1
+            else:
+                self.nb_fish += 1
 
     def remove_dead(self):
         for creature in self.creatures:
