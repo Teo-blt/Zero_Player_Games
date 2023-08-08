@@ -58,6 +58,8 @@ class Application(Tk):
         self.creatures = []
         self.possible_movement = []
         self.no_pray_movement = []
+        self.moved = False
+        self.previous_step = 0, 0
         self.SEED = 10
         self.step = 0
         self.EMPTY = 0
@@ -65,7 +67,7 @@ class Application(Tk):
         self.SHARK = 2
         self.nb_fish = 0
         self.nb_shark = 0
-        self.size = (10, 10)
+        self.size = (4, 4)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
         self.initial_energies = {self.FISH: 20, self.SHARK: 3}
@@ -123,7 +125,6 @@ class Application(Tk):
         self.data = self.update_data()
         self.upload_entry()
         self.im.set_data(self.good_ani_format())
-        print(self.data)
 
     def upload_entry(self):
         """
@@ -273,7 +274,7 @@ class Application(Tk):
             else:
                 self.nb_fish += 1
             self.detect_neighbor(creature, -creature.y, creature.x)
-            self.move(creature, -creature.y, creature.x)
+            self.previous_step = self.move(creature, -creature.y, creature.x)
             self.loose_energy(creature)
             self.reproduce(creature)
         self.remove_dead()
@@ -311,7 +312,8 @@ class Application(Tk):
         :param position_x: x position of the creature to move
         :param position_y: y position of the creature to move
         """
-
+        (x, y) = (0, 0)
+        self.moved = False
         if the_creature.id == self.FISH:
             if len(self.possible_movement) != 0:
                 (x, y) = choice(self.possible_movement)
@@ -319,6 +321,7 @@ class Application(Tk):
                 self.data_update[position_x + x, position_y + y] = the_creature
                 the_creature.x += y
                 the_creature.y -= x
+                self.moved = True
             else:
                 self.data_update[position_x, position_y] = the_creature
         elif the_creature.id == self.SHARK:
@@ -328,6 +331,7 @@ class Application(Tk):
                 self.data_update[position_x + x, position_y + y] = the_creature
                 the_creature.x += y
                 the_creature.y -= x
+                self.moved = True
             else:
                 if len(self.no_pray_movement) != 0:
                     (x, y) = choice(self.no_pray_movement)
@@ -335,8 +339,10 @@ class Application(Tk):
                     self.data_update[position_x + x, position_y + y] = the_creature
                     the_creature.x += y
                     the_creature.y -= x
+                    self.moved = True
                 else:
                     self.data_update[position_x, position_y] = the_creature
+        return x, y
 
     def loose_energy(self, the_creature):
         """
@@ -356,8 +362,10 @@ class Application(Tk):
         :param the_creature: class Creature
         """
         the_creature.fertility += 1
-        if the_creature.fertility >= the_creature.fertility_threshold:
+        if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
             the_creature.fertility = 0
+            self.spawn_creature(the_creature.id, the_creature.x - self.previous_step[1],
+                                the_creature.y + self.previous_step[0])
 
     def remove_dead(self):
         for creature in self.creatures:
