@@ -10,6 +10,7 @@
 # Imports
 import main
 import random
+import drawing
 import matplotlib
 import numpy as np
 import tkinter as tk
@@ -58,8 +59,10 @@ class Application(Tk):
         self.creatures = []
         self.possible_movement = []
         self.no_pray_movement = []
+        self.number_fish_for_graph = []
+        self.number_shark_for_graph = []
         self.moved = False
-        self.previous_step = 0, 0
+        self.previous_position = 0, 0
         self.SEED = 10
         self.step = 0
         self.EMPTY = 0
@@ -67,7 +70,7 @@ class Application(Tk):
         self.SHARK = 2
         self.nb_fish = 0
         self.nb_shark = 0
-        self.size = (4, 4)
+        self.size = (100, 100)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
         self.initial_energies = {self.FISH: 20, self.SHARK: 3}
@@ -164,12 +167,16 @@ class Application(Tk):
         toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
                                          command=lambda: [self.toggle_pause()])
         toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        draw_graph_button = ttk.Button(menu_frame, text="Draw graph", cursor="right_ptr",
+                                       command=lambda: [drawing.Application(self.number_fish_for_graph,
+                                                                            self.number_shark_for_graph)])
+        draw_graph_button.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
         self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.step_entry.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
+        self.step_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
         self.fish_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.fish_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
+        self.fish_entry.grid(row=5, column=0, padx=5, pady=10, sticky="ew")
         self.shark_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.shark_entry.grid(row=5, column=0, padx=5, pady=10, sticky="ew")
+        self.shark_entry.grid(row=6, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event, movement: int):
             """
@@ -267,6 +274,8 @@ class Application(Tk):
             self.move(creature, -creature.y, creature.x)
             self.loose_energy(creature)
             self.reproduce(creature)
+        self.number_fish_for_graph.append(self.nb_fish)
+        self.number_shark_for_graph.append(self.nb_shark)
         self.remove_dead()
 
     def detect_neighbor(self, the_creature: Creature, position_x: int, position_y: int):
@@ -280,18 +289,16 @@ class Application(Tk):
         self.possible_movement = []
         self.no_pray_movement = []
         for dx, dy in self.neighbor:
-            if (position_x + dx >= self.size[0] or position_x + dx < 0 or position_y + dy >= self.size[1]
-                    or position_y + dy < 0):  # check if it is out of limits
-                continue
             if the_creature.id == self.FISH:
-                if self.data[position_x + dx, position_y + dy] == self.EMPTY:
-                    self.possible_movement.append((dx, dy))
+                if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                    self.possible_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
             else:
-                if self.data[position_x + dx, position_y + dy] == self.EMPTY:
-                    self.no_pray_movement.append((dx, dy))
+                if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                    self.no_pray_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
                 else:
-                    if self.data[position_x + dx, position_y + dy].id == self.FISH:
-                        self.possible_movement.append((dx, dy))
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id == self.FISH:
+                        self.possible_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
 
     def move(self, the_creature: Creature, position_x: int, position_y: int):
         """
@@ -301,39 +308,37 @@ class Application(Tk):
         :param position_x: x position of the creature to move
         :param position_y: y position of the creature to move
         """
-        (x, y) = (0, 0)
         self.moved = False
         if the_creature.id == self.FISH:
             if len(self.possible_movement) != 0:
                 (x, y) = choice(self.possible_movement)
+                self.previous_position = position_x, position_y
                 self.data[position_x, position_y] = 0
-                self.data[position_x + x, position_y + y] = the_creature
-                the_creature.x += y
-                the_creature.y -= x
+                self.data[y, x] = the_creature
+                the_creature.x, the_creature.y = x, -y
                 self.moved = True
             else:
                 self.data[position_x, position_y] = the_creature
         elif the_creature.id == self.SHARK:
             if len(self.possible_movement) != 0:
                 (x, y) = choice(self.possible_movement)
-                self.data[position_x + x, position_y + y].dead = True  # eat the fish
+                self.previous_position = position_x, position_y
+                self.data[y, x].dead = True  # eat the fish
                 self.data[position_x, position_y] = 0
-                self.data[position_x + x, position_y + y] = the_creature
+                self.data[y, x] = the_creature
                 the_creature.energy += 2
-                the_creature.x += y
-                the_creature.y -= x
+                the_creature.x, the_creature.y = x, -y
                 self.moved = True
             else:
                 if len(self.no_pray_movement) != 0:
                     (x, y) = choice(self.no_pray_movement)
+                    self.previous_position = position_x, position_y
                     self.data[position_x, position_y] = 0
-                    self.data[position_x + x, position_y + y] = the_creature
-                    the_creature.x += y
-                    the_creature.y -= x
+                    self.data[y, x] = the_creature
+                    the_creature.x, the_creature.y = x, -y
                     self.moved = True
                 else:
                     self.data[position_x, position_y] = the_creature
-        self.previous_step = x, y
 
     def loose_energy(self, the_creature: Creature):
         """
@@ -358,8 +363,7 @@ class Application(Tk):
         the_creature.fertility += 1
         if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
             the_creature.fertility = 0
-            self.spawn_creature(the_creature.id, the_creature.x - self.previous_step[1],
-                                the_creature.y + self.previous_step[0])
+            self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
             if the_creature.id == self.SHARK:
                 self.nb_shark += 1
             else:
