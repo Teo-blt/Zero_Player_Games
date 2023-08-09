@@ -10,6 +10,7 @@
 # Imports
 import main
 import random
+import drawing
 import matplotlib
 import numpy as np
 import tkinter as tk
@@ -69,9 +70,10 @@ class Application(Tk):
         self.SHARK = 2
         self.nb_fish = 0
         self.nb_shark = 0
-        self.size = (100, 100)
+        self.size = (50, 50)
         self.pixel_start = (75, 72)
         self.pixel_end = (540, 534)
+        self.use_sex = 0
         self.initial_energies = {self.FISH: 20, self.SHARK: 3}
         self.fertility_thresholds = {self.FISH: 4, self.SHARK: 12}
         random.seed(self.SEED)
@@ -166,12 +168,16 @@ class Application(Tk):
         toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
                                          command=lambda: [self.toggle_pause()])
         toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
+        draw_graph_button = ttk.Button(menu_frame, text="Draw graph", cursor="right_ptr",
+                                       command=lambda: [drawing.Application(self.number_fish_for_graph,
+                                                                            self.number_shark_for_graph)])
+        draw_graph_button.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
         self.step_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.step_entry.grid(row=3, column=0, padx=5, pady=10, sticky="ew")
+        self.step_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
         self.fish_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.fish_entry.grid(row=4, column=0, padx=5, pady=10, sticky="ew")
+        self.fish_entry.grid(row=5, column=0, padx=5, pady=10, sticky="ew")
         self.shark_entry = ttk.Entry(menu_frame, cursor="right_ptr")
-        self.shark_entry.grid(row=5, column=0, padx=5, pady=10, sticky="ew")
+        self.shark_entry.grid(row=6, column=0, padx=5, pady=10, sticky="ew")
 
         def f(event: Event, movement: int):
             """
@@ -236,9 +242,10 @@ class Application(Tk):
         if creature_id == self.EMPTY:
             self.data[-y][x] = self.EMPTY
         else:
+            choice([-1, 0, 1])
             creature = Creature(creature_id, x, y,
                                 self.initial_energies[creature_id],
-                                self.fertility_thresholds[creature_id],
+                                self.fertility_thresholds[creature_id] + choice([-1, 0, 1]),
                                 choice(self.type_of_gender))
             self.creatures.append(creature)
             self.data[-y][x] = creature
@@ -292,7 +299,8 @@ class Application(Tk):
                     self.no_pray_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
                 else:
                     if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id == self.FISH:
-                        self.possible_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                        self.possible_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
 
     def move(self, the_creature: Creature, position_x: int, position_y: int):
         """
@@ -354,14 +362,36 @@ class Application(Tk):
 
         :param the_creature: class Creature
         """
-        the_creature.fertility += 1
-        if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
-            the_creature.fertility = 0
-            self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
-            if the_creature.id == self.SHARK:
-                self.nb_shark += 1
-            else:
-                self.nb_fish += 1
+        if self.use_sex:
+            the_creature.fertility += 1
+            if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
+                for dx, dy in self.neighbor:
+                    if self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]] == 0:
+                        continue
+                    elif self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                        1]].id == the_creature.id and self.data[
+                        (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                            1]].gender != the_creature.gender and self.data[
+                        (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]].fertility >= \
+                            self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                                1]].fertility_threshold:
+                        the_creature.fertility = 0
+                        self.data[
+                            (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]].fertility = 0
+                        self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
+                        if the_creature.id == self.SHARK:
+                            self.nb_shark += 1
+                        else:
+                            self.nb_fish += 1
+        else:
+            the_creature.fertility += 1
+            if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
+                the_creature.fertility = 0
+                self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
+                if the_creature.id == self.SHARK:
+                    self.nb_shark += 1
+                else:
+                    self.nb_fish += 1
 
     def remove_dead(self):
         for creature in self.creatures:
@@ -369,5 +399,3 @@ class Application(Tk):
                 self.creatures.remove(creature)
                 if creature.energy < 0:
                     self.data[-creature.y][creature.x] = 0
-
-
