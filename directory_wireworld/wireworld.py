@@ -8,7 +8,6 @@
 """The Module Has Been Build try zero player games"""
 # =============================================================================
 # Imports
-import main
 import matplotlib
 import numpy as np
 import tkinter as tk
@@ -101,9 +100,6 @@ class Application(Tk):
         plot_button = ttk.Button(menu_frame, text="Plot", cursor="right_ptr",
                                  command=lambda: [self.plot()])
         plot_button.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
-        back_button = ttk.Button(menu_frame, text="Back", cursor="right_ptr",
-                                 command=lambda: [main.Application().mainloop()])
-        back_button.grid(row=1, column=0, padx=5, pady=10, sticky="ew")
         toggle_pause_button = ttk.Button(menu_frame, text="Toggle pause", cursor="right_ptr",
                                          command=lambda: [self.toggle_pause()])
         toggle_pause_button.grid(row=2, column=0, padx=5, pady=10, sticky="ew")
