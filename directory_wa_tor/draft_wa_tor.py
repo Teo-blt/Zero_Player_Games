@@ -56,12 +56,17 @@ class Application(Tk):
     """
     the main Tk application
     """
+
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
-        self.title("WA-TOR")
+
+        # Modifiable settings but not important
+        self.title("WA-TOR")  # title of the window
         self.color = ["black", "green", "blue"]  # color of the creatures
         self.type_of_gender = ["male", "female"]  # I SPECIFY, WE ARE TALKING ABOUT FISH
-        self.neighbor = ((0, -1), (1, 0), (0, 1), (-1, 0))  # The touching neighbor
+
+        # Not modifiable parameters
+        self.neighbor = []  # The touching neighbor
         self.creatures = []  # list of all creatures
         self.primary_movement = []  # list of all primary possible movement for one creature at one moment
         self.secondary_movement = []  # list of all secondary possible movement for one creature at one moment
@@ -69,30 +74,33 @@ class Application(Tk):
         self.number_shark_for_graph = []  # list with the population of shark at each time
         self.moved = False  # if the selected creature have moved
         self.previous_position = 0, 0  # the position of the creature before moving
-        self.SEED = 10  # for the random seed generation
         self.step = 0  # step of the simulation
         self.EMPTY = 0  # empty cell
         self.FISH = 1  # fish cell
         self.SHARK = 2  # shark cell
         self.nb_fish = 0  # population of fish
         self.nb_shark = 0  # population of shark
-        self.size = (50, 50)  # size of the map
         self.pixel_start = (75, 72)  # the position of the starting pixel of the map (do not touch)
         self.pixel_end = (540, 534)  # the position of the ending pixel of the map (do not touch)
-        self.use_sex = 0  # DO YOU WANT SEX ? (for activate sexual reproduction)
-        self.initial_energies = {self.FISH: 20, self.SHARK: 3}  # starting energy of the species
-        self.fertility_thresholds = {self.FISH: 4, self.SHARK: 12}  # fertility thresholds of the species
+        self.SEED = 10  # for the random seed generation
         random.seed(self.SEED)  # to randomize the random with the chosen seed
-        self.data_for_ani = np.zeros(self.size, dtype=int)  # matrix for the animation (only the id of creature)
-        self.data = np.zeros(self.size, dtype=object)  # matrix 3D with Creature
         self.step_entry = ttk.Entry()  # to show the number of step in the HMI
         self.fish_entry = ttk.Entry()  # to show the number of fish in the HMI
         self.shark_entry = ttk.Entry()  # to show the number of shark in the HMI
+
+        # Important modifiable settings
+        self.size = (40, 40)  # size of the map
+        self.advanced_mobility = 0  # use advanced mobility with long range detection
+        self.use_sex = 0  # DO YOU WANT SEX ? (for activate sexual reproduction)
+        self.initial_energies = {self.FISH: 20, self.SHARK: 3}  # starting energy of the species
+        self.fertility_thresholds = {self.FISH: 4, self.SHARK: 12}  # fertility thresholds of the species
 
         # Canvas settings
         self.fig = matplotlib.figure.Figure
         self.ax = matplotlib.axes
         self.canvas = matplotlib.backends.backend_tkagg.FigureCanvasTkAgg
+        self.data_for_ani = np.zeros(self.size, dtype=int)  # matrix for the animation (only the id of creature)
+        self.data = np.zeros(self.size, dtype=object)  # matrix 3D with Creature
 
         # Animation settings
         self.paused = 1  # to pause the animation
@@ -101,10 +109,7 @@ class Application(Tk):
         self.anim = animation.FuncAnimation
         self.cmap = colors.ListedColormap(self.color)  # ["black", "green", "blue"]
         self.norm = colors.BoundaryNorm([0, 1, 2, 3], self.cmap.N)  # number of color HERE
-        # it's like :
-        # between 0 and 1 it's black
-        # between 1 and 2 it's green
-        # between 2 and 3 it's blue
+        # it's like : between 0 and 1 it's black, between 1 and 2 it's green, between 2 and 3 it's blue
 
         # Create widgets
         self.start_wa_tor()
@@ -282,7 +287,7 @@ class Application(Tk):
             else:
                 self.nb_fish += 1
             self.detect_neighbor(creature, -creature.y, creature.x)  # look for neighbor
-            self.move(creature, -creature.y, creature.x)  # move and eat
+            self.move_and_eat(creature, -creature.y, creature.x)  # move and eat
             self.loose_energy(creature)  # loose energy
             self.reproduce(creature)  # reproduce (maybe)
         self.number_fish_for_graph.append(self.nb_fish)
@@ -299,39 +304,73 @@ class Application(Tk):
         """
         self.primary_movement = []
         self.secondary_movement = []
-        for dx, dy in self.neighbor:
+        if self.advanced_mobility:
             if the_creature.id == self.FISH:  # if it's a fish, only look for empty cells
-                if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
-                    self.primary_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
-            else:  # if it's a shark, look for prey in priority
-                if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
-                    self.secondary_movement.append(((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
-                else:
-                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id == self.FISH:
+                for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
                         self.primary_movement.append(
                             ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
 
-    def move(self, the_creature: Creature, position_x: int, position_y: int):
+            elif the_creature.id == self.SHARK:  # if it's a shark, look for prey in priority
+                for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                        pass
+                    else:
+                        if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
+                                self.FISH):
+                            self.primary_movement.append(
+                                ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                if len(self.primary_movement) == 0:
+                    for dx, dy in self.area_of_neighbor(1):
+                        pass #TODO
+        else:
+            for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
+                if the_creature.id == self.FISH:  # if it's a fish, only look for empty cells
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                        self.primary_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                elif the_creature.id == self.SHARK:  # if it's a shark, look for prey in priority
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                        self.secondary_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                    else:
+                        if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
+                                self.FISH):
+                            self.primary_movement.append(
+                                ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+
+    def area_of_neighbor(self, r: int):
+        if r == 0:
+            self.neighbor = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        else:
+            self.neighbor = []
+            for i in range(-r, r + 1):
+                for j in range(-r, r + 1):
+                    if i == 0 and j == 0:
+                        continue
+                    else:
+                        self.neighbor.append((i, j))
+        return self.neighbor
+
+    def move_and_eat(self, the_creature: Creature, position_x: int, position_y: int):
         """
-        move is a function that move a creature of one step
+        move_and_eat is a function that move a creature of one step nad make it eat if it can
 
         :param the_creature: class Creature
         :param position_x: x position of the creature to move
         :param position_y: y position of the creature to move
         """
         self.moved = False
-
-        def the_moving_action(i_can_eat: bool):
-            """
-            the_moving_action is a function that move a creature of one step
-
-            :param i_can_eat:
-            """
-            if len(self.primary_movement) == 0:  # if no primary movement possible look for secondary movement
-                if len(self.secondary_movement) == 0:  # if no secondary movement
-                    self.data[position_x, position_y] = the_creature  # do not move
-                else:
-                    self.primary_movement = self.secondary_movement  # secondary movement become primary movement
+        i_can_eat = False  # We take fish as a base, fish do not eat
+        if the_creature.id == self.SHARK:
+            i_can_eat = True
+        if len(self.primary_movement) == 0 and len(self.secondary_movement) == 0:  # if no primary movement
+            # and no secondary movement do not move
+            self.data[position_x, position_y] = the_creature  # do not move
+        else:
+            if len(self.primary_movement) == 0:  # no prey to eat, only movement
+                self.primary_movement = self.secondary_movement  # secondary movement become primary movement
+                i_can_eat = False  # no prey to eat
             (x, y) = choice(self.primary_movement)
             self.previous_position = position_x, position_y
             self.data[position_x, position_y] = 0
@@ -341,11 +380,6 @@ class Application(Tk):
             self.data[y, x] = the_creature
             the_creature.x, the_creature.y = x, -y
             self.moved = True
-
-        if the_creature.id == self.FISH:
-            the_moving_action(False)
-        elif the_creature.id == self.SHARK:
-            the_moving_action(True)
 
     def loose_energy(self, the_creature: Creature):
         """
@@ -370,7 +404,7 @@ class Application(Tk):
         if self.use_sex:  # If we use the sexual reproduction
             the_creature.fertility += 1
             if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
-                for dx, dy in self.neighbor:
+                for dx, dy in self.area_of_neighbor(1):
                     if self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]] == 0:
                         continue
                     elif self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
@@ -380,7 +414,7 @@ class Application(Tk):
                         (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]].fertility >= \
                             self.data[(the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
                                 1]].fertility_threshold:
-                        # we are cheking if the creature have neighbor from the same species, from a different gender
+                        # we are checking if the creature have neighbor from the same species, from a different gender
                         # and if the neighbor creature have reach the fertility threshold
                         the_creature.fertility = 0
                         self.data[
