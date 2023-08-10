@@ -25,18 +25,22 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 # ============================================================================
 
 class Creature:
-    """A sea creature living in Wa-Tor world."""
+    """
+    a sea creature living in Wa-Tor world
+    """
 
-    def __init__(self, id, x, y, init_energy, fertility_threshold, gender):
-        """Initialize the creature.
+    def __init__(self, id: int, x: int, y: int, init_energy: int, fertility_threshold: int, gender: str):
+        """
+        initialize the creature
 
-        id is an integer identifying the creature.
-        x, y is the creature's position in the Wa-Tor world grid.
-        init_energy is the creature's initial energy: this decreases by 1
-            each time the creature moves and if it reaches 0 the creature dies.
-        fertility_threshold: each chronon, the creature's fertility increases
-            by 1. When it reaches fertility_threshold, the creature reproduces.
-
+        :param id: is an integer identifying the creature
+        :param x, y: is the creature's position in the Wa-Tor world grid
+        :param init_energy: is the creature's initial energy: this decreases by 1
+            each time the creature moves and if it reaches 0 the creature dies
+        :param fertility_threshold: each step, the creature's fertility increases
+            by 1. When it reaches fertility_threshold, the creature reproduces
+        :param gender: only use when sexual reproduction is active,
+            determine the gender of the creature
         """
 
         self.id = id
@@ -49,6 +53,9 @@ class Creature:
 
 
 class Application(Tk):
+    """
+    the main Tk application
+    """
     def __init__(self):
         Tk.__init__(self)  # Initialisation of the first window
         self.title("WA-TOR")
