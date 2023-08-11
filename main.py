@@ -3,7 +3,7 @@
 # =============================================================================
 # Created By  : Bulteau Téo
 # Created Date: July 20 10:00:00 2023
-# For Wi6labs, all rights reserved
+# For Zero_player_game, all rights reserved
 # =============================================================================
 """The Module Has Been Build to try zero player games"""
 # =============================================================================
