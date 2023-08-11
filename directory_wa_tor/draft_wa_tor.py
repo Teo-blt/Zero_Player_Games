@@ -10,6 +10,7 @@
 # Imports
 import random
 import matplotlib
+import helper_advanced_mobility as am
 import numpy as np
 import tkinter as tk
 import matplotlib.pyplot as plt
@@ -21,8 +22,16 @@ from matplotlib import animation
 from directory_wa_tor import drawing
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-
 # ============================================================================
+
+EMPTY = 0  # empty cell
+FISH = 1  # fish cell
+SHARK = 2  # shark cell
+SEED = 10  # for the random seed generation
+random.seed(SEED)  # to randomize the random with the chosen seed
+pixel_start = (75, 72)  # the position of the starting pixel of the map (do not touch)
+pixel_end = (540, 534)  # the position of the ending pixel of the map (do not touch)
+
 
 class Creature:
     """
@@ -70,30 +79,24 @@ class Application(Tk):
         self.creatures = []  # list of all creatures
         self.primary_movement = []  # list of all primary possible movement for one creature at one moment
         self.secondary_movement = []  # list of all secondary possible movement for one creature at one moment
+        self.scanning_fish = []  # list of all fish nearby
         self.number_fish_for_graph = []  # list with the population of fish at each time
         self.number_shark_for_graph = []  # list with the population of shark at each time
         self.moved = False  # if the selected creature have moved
         self.previous_position = 0, 0  # the position of the creature before moving
         self.step = 0  # step of the simulation
-        self.EMPTY = 0  # empty cell
-        self.FISH = 1  # fish cell
-        self.SHARK = 2  # shark cell
         self.nb_fish = 0  # population of fish
         self.nb_shark = 0  # population of shark
-        self.pixel_start = (75, 72)  # the position of the starting pixel of the map (do not touch)
-        self.pixel_end = (540, 534)  # the position of the ending pixel of the map (do not touch)
-        self.SEED = 10  # for the random seed generation
-        random.seed(self.SEED)  # to randomize the random with the chosen seed
         self.step_entry = ttk.Entry()  # to show the number of step in the HMI
         self.fish_entry = ttk.Entry()  # to show the number of fish in the HMI
         self.shark_entry = ttk.Entry()  # to show the number of shark in the HMI
 
         # Important modifiable settings
-        self.size = (40, 40)  # size of the map
-        self.advanced_mobility = 0  # use advanced mobility with long range detection
+        self.size = (50, 50)  # size of the map
+        self.advanced_mobility = 1  # use advanced mobility with long range detection
         self.use_sex = 0  # DO YOU WANT SEX ? (for activate sexual reproduction)
-        self.initial_energies = {self.FISH: 20, self.SHARK: 3}  # starting energy of the species
-        self.fertility_thresholds = {self.FISH: 4, self.SHARK: 12}  # fertility thresholds of the species
+        self.initial_energies = {FISH: 20, SHARK: 3}  # starting energy of the species
+        self.fertility_thresholds = {FISH: 4, SHARK: 12}  # fertility thresholds of the species
 
         # Canvas settings
         self.fig = matplotlib.figure.Figure
@@ -200,15 +203,15 @@ class Application(Tk):
             :param event: information about the clic of the user (position and more)
             :param movement: information about the movement of the mouse
             """
-            if event.x <= self.pixel_start[0] or event.y <= self.pixel_start[1] or \
-                    event.x >= self.pixel_end[0] or event.y >= self.pixel_end[1]:  # check if the clic is out-bound
+            if event.x <= pixel_start[0] or event.y <= pixel_start[1] or \
+                    event.x >= pixel_end[0] or event.y >= pixel_end[1]:  # check if the clic is out-bound
                 pass
             else:
                 # do not use int() for x_pixel et y_pixel
-                x_pixel = (self.pixel_end[0] - self.pixel_start[0]) / self.size[0]
-                y_pixel = (self.pixel_end[1] - self.pixel_start[1]) / self.size[1]
-                x_location = int((event.x - self.pixel_start[0]) / x_pixel)
-                y_location = -(int((event.y - self.pixel_start[1]) / y_pixel))
+                x_pixel = (pixel_end[0] - pixel_start[0]) / self.size[0]
+                y_pixel = (pixel_end[1] - pixel_start[1]) / self.size[1]
+                x_location = int((event.x - pixel_start[0]) / x_pixel)
+                y_location = -(int((event.y - pixel_start[1]) / y_pixel))
                 if int(x_location) >= self.size[0] or int(y_location) > 0 or \
                         int(x_location) < 0 or int(y_location) <= -self.size[1]:
                     pass
@@ -254,8 +257,8 @@ class Application(Tk):
         :param x: x position of the creature to spawn
         :param y: y position of the creature to spawn
         """
-        if creature_id == self.EMPTY:
-            self.data[-y][x] = self.EMPTY
+        if creature_id == EMPTY:
+            self.data[-y][x] = EMPTY
         else:
             choice([-1, 0, 1])  # to randomize (a little) the fertility of the creature
             creature = Creature(creature_id, x, y,
@@ -282,7 +285,7 @@ class Application(Tk):
             if creature.dead:
                 # This creature has been eaten so skip it.
                 continue
-            if creature.id == self.SHARK:
+            if creature.id == SHARK:
                 self.nb_shark += 1
             else:
                 self.nb_fish += 1
@@ -304,38 +307,52 @@ class Application(Tk):
         """
         self.primary_movement = []
         self.secondary_movement = []
-        if self.advanced_mobility:
-            if the_creature.id == self.FISH:  # if it's a fish, only look for empty cells
+        self.scanning_fish = []
+        if self.advanced_mobility:  # shark can scan for distant fish
+            if the_creature.id == FISH:  # if it's a fish, only look for empty cells
                 for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
-                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == EMPTY:
                         self.primary_movement.append(
                             ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
 
-            elif the_creature.id == self.SHARK:  # if it's a shark, look for prey in priority
+            elif the_creature.id == SHARK:  # if it's a shark, look for prey in priority
                 for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
-                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
-                        pass
-                    else:
-                        if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
-                                self.FISH):
-                            self.primary_movement.append(
-                                ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
-                if len(self.primary_movement) == 0:
-                    for dx, dy in self.area_of_neighbor(1):
-                        pass #TODO
-        else:
-            for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
-                if the_creature.id == self.FISH:  # if it's a fish, only look for empty cells
-                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
-                        self.primary_movement.append(
-                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
-                elif the_creature.id == self.SHARK:  # if it's a shark, look for prey in priority
-                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == self.EMPTY:
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == EMPTY:
                         self.secondary_movement.append(
                             ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
                     else:
                         if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
-                                self.FISH):
+                                FISH):
+                            self.primary_movement.append(
+                                ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                if len(self.primary_movement) == 0 and len(self.secondary_movement) != 0:
+                    # no nearby fish and I can move,  scanning for distant fish
+                    for dx, dy in self.area_of_neighbor(2):
+                        if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == EMPTY:
+                            pass
+                        else:
+                            if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
+                                    FISH):
+                                self.scanning_fish.append((dx, dy))
+                    if len(self.scanning_fish) == 0:  # No fish nearby
+                        pass
+                    else:
+                        tab = choice(am.give_the_best_possible_movement(self.scanning_fish))
+                        self.secondary_movement = [((position_y + tab[1]) % self.size[1],
+                                                    (position_x + tab[0]) % self.size[0])]
+        else:
+            for dx, dy in self.area_of_neighbor(0):  # ((0, -1), (1, 0), (0, 1), (-1, 0)) the touching neighbor
+                if the_creature.id == FISH:  # if it's a fish, only look for empty cells
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == EMPTY:
+                        self.primary_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                elif the_creature.id == SHARK:  # if it's a shark, look for prey in priority
+                    if self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]] == EMPTY:
+                        self.secondary_movement.append(
+                            ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
+                    else:
+                        if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
+                                FISH):
                             self.primary_movement.append(
                                 ((position_y + dy) % self.size[1], (position_x + dx) % self.size[0]))
 
@@ -362,7 +379,7 @@ class Application(Tk):
         """
         self.moved = False
         i_can_eat = False  # We take fish as a base, fish do not eat
-        if the_creature.id == self.SHARK:
+        if the_creature.id == SHARK:
             i_can_eat = True
         if len(self.primary_movement) == 0 and len(self.secondary_movement) == 0:  # if no primary movement
             # and no secondary movement do not move
@@ -390,9 +407,9 @@ class Application(Tk):
         the_creature.energy -= 1
         if the_creature.energy < 0:
             the_creature.dead = True
-            if the_creature.id == self.SHARK:
+            if the_creature.id == SHARK:
                 self.nb_shark -= 1
-            elif the_creature.id == self.FISH:
+            elif the_creature.id == FISH:
                 self.nb_fish -= 1
 
     def reproduce(self, the_creature: Creature):
@@ -420,18 +437,18 @@ class Application(Tk):
                         self.data[
                             (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]].fertility = 0
                         self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
-                        if the_creature.id == self.SHARK:
+                        if the_creature.id == SHARK:
                             self.nb_shark += 1
-                        elif the_creature.id == self.FISH:
+                        elif the_creature.id == FISH:
                             self.nb_fish += 1
         else:  # If we use the clone reproduction
             the_creature.fertility += 1
             if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
                 the_creature.fertility = 0
                 self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
-                if the_creature.id == self.SHARK:
+                if the_creature.id == SHARK:
                     self.nb_shark += 1
-                elif the_creature.id == self.FISH:
+                elif the_creature.id == FISH:
                     self.nb_fish += 1
 
     def remove_dead(self):
