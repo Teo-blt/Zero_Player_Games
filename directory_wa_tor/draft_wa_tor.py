@@ -38,7 +38,7 @@ class Creature:
     a sea creature living in Wa-Tor world
     """
 
-    def __init__(self, id: int, x: int, y: int, init_energy: int, fertility_threshold: int, gender: str):
+    def __init__(self, id: int, x: int, y: int, init_energy: int, fertility_threshold: int, gender: str, genes: int):
         """
         initialize the creature
 
@@ -57,6 +57,7 @@ class Creature:
         self.energy = init_energy
         self.fertility_threshold = fertility_threshold
         self.gender = gender
+        self.genes = genes
         self.fertility = 0
         self.dead = False
 
@@ -92,7 +93,7 @@ class Application(Tk):
         self.shark_entry = ttk.Entry()  # to show the number of shark in the HMI
 
         # Important modifiable settings
-        self.size = (50, 50)  # size of the map
+        self.size = (10, 10)  # size of the map
         self.advanced_mobility = 1  # use advanced mobility with long range detection
         self.use_sex = 0  # DO YOU WANT SEX ? (for activate sexual reproduction)
         self.initial_energies = {FISH: 20, SHARK: 3}  # starting energy of the species
@@ -223,11 +224,11 @@ class Application(Tk):
                         self.past_value = (x_location, y_location)
                         if type(self.data[-y_location][x_location]) == int:  # if it's a EMPTY cell
                             self.spawn_creature((self.data[-y_location][x_location] + 1) % len(self.color),
-                                                x_location, y_location)
+                                                x_location, y_location, None, None)
                         else:
                             self.creatures.remove(self.data[-y_location][x_location])
                             self.spawn_creature((self.data[-y_location][x_location].id + 1) % len(self.color),
-                                                x_location, y_location)
+                                                x_location, y_location, None, None)
                         self.im.set_data(self.good_ani_format())
 
         def link_to_f_not_motion(event: Event):
@@ -249,22 +250,31 @@ class Application(Tk):
         self.anim = animation.FuncAnimation(self.fig, self.animate, interval=self.interval, frames=200)
         tk.mainloop()
 
-    def spawn_creature(self, creature_id: int, x: int, y: int):
+    def spawn_creature(self, creature_id: int, x: int, y: int, gene_parent_1, gene_parent_2):
         """
         spawn_creature Spawn a creature of type ID creature_id at location x,y
 
         :param creature_id: type of creature to spawn
         :param x: x position of the creature to spawn
         :param y: y position of the creature to spawn
+        :param gene_parent_1: gene pool of the parent 1
+        :param gene_parent_2: gene pool of the parent 2
+        gene_parent_1
         """
         if creature_id == EMPTY:
             self.data[-y][x] = EMPTY
         else:
-            choice([-1, 0, 1])  # to randomize (a little) the fertility of the creature
+            if self.use_sex:
+                if gene_parent_1 is None:
+                    gene = choice([-1, 0, 1])
+                else:
+                    gene = choice([gene_parent_1, gene_parent_2])
+            else:
+                gene = choice([-1, 0, 1])  # to randomize (a little) the fertility of the creature
             creature = Creature(creature_id, x, y,
                                 self.initial_energies[creature_id],
-                                self.fertility_thresholds[creature_id] + choice([-1, 0, 1]),
-                                choice(self.type_of_gender))
+                                self.fertility_thresholds[creature_id] + gene,
+                                choice(self.type_of_gender), gene)
             self.creatures.append(creature)
             self.data[-y][x] = creature
 
@@ -334,8 +344,28 @@ class Application(Tk):
                             if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
                                     FISH):
                                 self.scanning_fish.append((dx, dy))
-                    if len(self.scanning_fish) == 0:  # No fish nearby
-                        pass
+                    if len(self.scanning_fish) == 0:  # No distant fish
+                        # no distant fish and I can move, IF sex is active, scanning for distant mate
+                        if self.use_sex:
+                            for dx, dy in self.area_of_neighbor(2):
+                                if (self.data[(position_x + dx) % self.size[0], (position_y + dy) % self.size[1]]
+                                        == EMPTY):
+                                    pass
+                                else:
+                                    if (self.data[
+                                            (position_x + dx) % self.size[0], (position_y + dy) % self.size[1]].id ==
+                                        SHARK and self.data[
+                                            (position_x + dx) % self.size[0], (position_y + dy) % self.size[
+                                                1]].gender !=
+                                        the_creature.gender) and self.data[
+                                        (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                                            1]].fertility >= \
+                                            self.data[
+                                                (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                                                    1]].fertility_threshold:
+                                        self.scanning_fish.append((dx, dy))
+                        else:
+                            pass  # keep the random possible movement
                     else:
                         tab = choice(am.give_the_best_possible_movement(self.scanning_fish))
                         self.secondary_movement = [((position_y + tab[1]) % self.size[1],
@@ -436,7 +466,10 @@ class Application(Tk):
                         the_creature.fertility = 0
                         self.data[
                             (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[1]].fertility = 0
-                        self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
+                        self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0],
+                                            the_creature.genes, self.data[
+                                                (the_creature.x + dx) % self.size[0], (the_creature.y + dy) % self.size[
+                                                    1]].genes)
                         if the_creature.id == SHARK:
                             self.nb_shark += 1
                         elif the_creature.id == FISH:
@@ -445,7 +478,8 @@ class Application(Tk):
             the_creature.fertility += 1
             if the_creature.fertility >= the_creature.fertility_threshold and self.moved:
                 the_creature.fertility = 0
-                self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0])
+                self.spawn_creature(the_creature.id, self.previous_position[1], -self.previous_position[0],
+                                    None, None)
                 if the_creature.id == SHARK:
                     self.nb_shark += 1
                 elif the_creature.id == FISH:

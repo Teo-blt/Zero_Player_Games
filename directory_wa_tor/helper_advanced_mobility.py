@@ -65,3 +65,18 @@ def give_the_best_possible_movement(scan: list):
     if weight_left == max(weight_up, weight_right, weight_down, weight_left):
         result.append(left)
     return result  # up or right or down or left
+
+"""
+distance in step from the center 
+
+4 3 2 3 4
+3 1 / 1 3
+2 / 0 / 2
+3 1 / 1 3
+4 3 2 3 4
+
+1 step weight = 2
+2 step weight = 0.75
+3 step weight = 0.5
+4 step weight = 0.25
+"""
